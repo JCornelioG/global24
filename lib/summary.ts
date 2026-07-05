@@ -5,16 +5,60 @@ import { relatedArticles } from "./news";
 import type { Article, Locale } from "./types";
 
 /**
- * Síntesis original de un artículo generada con la API de Claude.
- * Devuelve null si no hay credenciales (ANTHROPIC_API_KEY), si SUMMARY_AI=0
- * o si la generación falla: la página cae a un resumen contextual sin IA.
- * El modelo se elige con SUMMARY_MODEL (default claude-opus-4-8; para bajar
- * costo en alto volumen puede usarse claude-haiku-4-5).
+ * Síntesis original de un artículo generada por IA. Agnóstica de proveedor:
+ *
+ *   SUMMARY_PROVIDER=deepseek   → DEEPSEEK_API_KEY (más barato, compatible OpenAI)
+ *   SUMMARY_PROVIDER=anthropic  → ANTHROPIC_API_KEY
+ *   SUMMARY_PROVIDER=openai     → SUMMARY_API_KEY + SUMMARY_BASE_URL (OpenAI, Groq,
+ *                                 OpenRouter, Together… cualquier endpoint compatible)
+ *
+ * Si no se define SUMMARY_PROVIDER, se detecta según qué key exista
+ * (DeepSeek tiene prioridad). SUMMARY_MODEL sobreescribe el modelo.
+ * Devuelve null si no hay proveedor, si SUMMARY_AI=0 o si la generación falla:
+ * la página cae a un resumen contextual sin IA.
  */
-const MODEL = process.env.SUMMARY_MODEL ?? "claude-opus-4-8";
 
-/* Sin credenciales el SDK falla en el constructor: se recuerda para no
- * reintentar en cada render de página. */
+interface ProviderConfig {
+  kind: "anthropic" | "openai";
+  apiKey: string;
+  model: string;
+  baseUrl?: string;
+}
+
+function resolveProvider(): ProviderConfig | null {
+  const explicit = (process.env.SUMMARY_PROVIDER ?? "").toLowerCase();
+  const provider =
+    explicit || (process.env.DEEPSEEK_API_KEY ? "deepseek" : process.env.ANTHROPIC_API_KEY ? "anthropic" : "");
+
+  switch (provider) {
+    case "deepseek": {
+      const apiKey = process.env.DEEPSEEK_API_KEY;
+      if (!apiKey) return null;
+      return {
+        kind: "openai",
+        apiKey,
+        baseUrl: "https://api.deepseek.com",
+        model: process.env.SUMMARY_MODEL ?? "deepseek-chat",
+      };
+    }
+    case "anthropic": {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) return null;
+      return { kind: "anthropic", apiKey, model: process.env.SUMMARY_MODEL ?? "claude-opus-4-8" };
+    }
+    case "openai": {
+      const apiKey = process.env.SUMMARY_API_KEY;
+      const baseUrl = process.env.SUMMARY_BASE_URL;
+      const model = process.env.SUMMARY_MODEL;
+      if (!apiKey || !baseUrl || !model) return null;
+      return { kind: "openai", apiKey, baseUrl: baseUrl.replace(/\/$/, ""), model };
+    }
+    default:
+      return null;
+  }
+}
+
+/* Errores de autenticación se recuerdan para no reintentar en cada render. */
 let aiUnavailable = false;
 
 const SYSTEM: Record<Locale, string> = {
@@ -55,29 +99,63 @@ function buildPrompt(article: Article, related: Article[], lang: Locale): string
   return lines.join("\n");
 }
 
-async function generateBrief(article: Article, related: Article[], lang: Locale): Promise<string[]> {
-  const client = new Anthropic({ timeout: 25_000, maxRetries: 1 });
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 1024,
-    system: SYSTEM[lang],
-    messages: [{ role: "user", content: buildPrompt(article, related, lang) }],
-  });
-
-  if (response.stop_reason === "refusal") throw new Error("refusal");
-
-  const text = response.content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("\n")
-    .trim();
+/** Parte el texto del modelo en párrafos (máx 3). Lanza si vino vacío. */
+function toParagraphs(text: string): string[] {
   const paragraphs = text
+    .trim()
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean)
     .slice(0, 3);
   if (paragraphs.length === 0) throw new Error("empty");
   return paragraphs;
+}
+
+async function generateAnthropic(prompt: string, lang: Locale, cfg: ProviderConfig): Promise<string[]> {
+  const client = new Anthropic({ apiKey: cfg.apiKey, timeout: 25_000, maxRetries: 1 });
+  const response = await client.messages.create({
+    model: cfg.model,
+    max_tokens: 1024,
+    system: SYSTEM[lang],
+    messages: [{ role: "user", content: prompt }],
+  });
+  if (response.stop_reason === "refusal") throw new Error("refusal");
+  const text = response.content
+    .filter((block) => block.type === "text")
+    .map((block) => block.text)
+    .join("\n");
+  return toParagraphs(text);
+}
+
+/** Chat Completions compatible con OpenAI (DeepSeek, Groq, OpenRouter…). */
+async function generateOpenAICompatible(prompt: string, lang: Locale, cfg: ProviderConfig): Promise<string[]> {
+  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: cfg.model,
+      max_tokens: 512,
+      temperature: 0.4,
+      stream: false,
+      messages: [
+        { role: "system", content: SYSTEM[lang] },
+        { role: "user", content: prompt },
+      ],
+    }),
+    signal: AbortSignal.timeout(25_000),
+  });
+  if (!res.ok) throw new Error(`${cfg.model} ${res.status}`);
+  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  return toParagraphs(data.choices?.[0]?.message?.content ?? "");
+}
+
+async function generateBrief(article: Article, related: Article[], lang: Locale): Promise<string[]> {
+  const cfg = resolveProvider();
+  if (!cfg) throw new Error("no provider");
+  const prompt = buildPrompt(article, related, lang);
+  return cfg.kind === "anthropic"
+    ? generateAnthropic(prompt, lang, cfg)
+    : generateOpenAICompatible(prompt, lang, cfg);
 }
 
 /* Se cachea 24 h por (lang, artículo). Los relacionados se buscan ADENTRO de
@@ -96,11 +174,13 @@ const cachedBrief = unstable_cache(
 
 export async function getArticleBrief(article: Article, lang: Locale): Promise<string[] | null> {
   if (aiUnavailable || process.env.SUMMARY_AI === "0") return null;
+  if (!resolveProvider()) return null;
   try {
     return await cachedBrief(lang, article);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (error instanceof Anthropic.AuthenticationError || message.includes("apiKey")) {
+    // 401/403 = credenciales inválidas: dejar de reintentar hasta el próximo deploy.
+    if (error instanceof Anthropic.AuthenticationError || /\b(401|403)\b|apiKey/.test(message)) {
       aiUnavailable = true;
     }
     return null;
