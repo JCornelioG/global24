@@ -1,6 +1,8 @@
 import "server-only";
+import { extractFromHtml } from "@extractus/article-extractor";
 import Anthropic from "@anthropic-ai/sdk";
 import { unstable_cache } from "next/cache";
+import { stripHtml } from "./format";
 import { relatedArticles } from "./news";
 import type { Article, Locale } from "./types";
 
@@ -15,8 +17,12 @@ import type { Article, Locale } from "./types";
  *
  * Si no se define SUMMARY_PROVIDER, se detecta según qué key exista
  * (Groq tiene prioridad). SUMMARY_MODEL sobreescribe el modelo.
- * Devuelve null si no hay proveedor, si SUMMARY_AI=0 o si la generación falla:
- * la página cae a un resumen contextual sin IA.
+ *
+ * Estrategia de longitud: primero se intenta DESCARGAR el texto del artículo
+ * original y hacer un resumen largo (4-6 párrafos) grounded en ese texto. Si la
+ * fuente bloquea, es un enlace de Google News (redirect) o devuelve poco texto,
+ * se cae a un resumen corto basado solo en el titular y el extracto.
+ * Devuelve null si no hay proveedor, si SUMMARY_AI=0 o si todo falla.
  */
 
 interface ProviderConfig {
@@ -79,7 +85,7 @@ function resolveProvider(): ProviderConfig | null {
 /* Errores de autenticación se recuerdan para no reintentar en cada render. */
 let aiUnavailable = false;
 
-const SYSTEM: Record<Locale, string> = {
+const SYSTEM_SHORT: Record<Locale, string> = {
   es: [
     "Sos redactor de Global24, un agregador de noticias. Escribís síntesis periodísticas ORIGINALES en español neutro.",
     "Formato: exactamente 2 párrafos breves separados por una línea en blanco, máximo 110 palabras en total.",
@@ -96,7 +102,24 @@ const SYSTEM: Record<Locale, string> = {
   ].join(" "),
 };
 
-function buildPrompt(article: Article, related: Article[], lang: Locale): string {
+const SYSTEM_LONG: Record<Locale, string> = {
+  es: [
+    "Sos redactor de Global24, un agregador de noticias. A partir del TEXTO del artículo original que se te entrega, escribí un resumen periodístico ORIGINAL en español neutro.",
+    "Extensión: 4 a 6 párrafos, entre 350 y 450 palabras.",
+    "Reescribí con tus propias palabras: NO copies frases textuales del original. Incluí el contexto, qué ocurrió, los datos clave y las implicancias,",
+    "pero SOLO lo que esté en el texto provisto: no inventes ni agregues información externa. Tono informativo y neutral, sin opinión.",
+    "Empezá directo con el contenido, sin título ni encabezados como 'Resumen:'. Separá los párrafos con una línea en blanco.",
+  ].join(" "),
+  en: [
+    "You are an editor at Global24, a news aggregator. From the ORIGINAL article TEXT provided, write an ORIGINAL journalistic summary in English.",
+    "Length: 4 to 6 paragraphs, between 350 and 450 words.",
+    "Rewrite in your own words: do NOT copy sentences verbatim from the original. Include context, what happened, key facts and implications,",
+    "but ONLY what is present in the provided text: never invent or add outside information. Neutral, informative tone, no opinion.",
+    "Start directly with the content, no title or headings like 'Summary:'. Separate paragraphs with a blank line.",
+  ].join(" "),
+};
+
+function buildShortPrompt(article: Article, related: Article[], lang: Locale): string {
   const es = lang === "es";
   const lines = [
     es ? "Materiales sobre una noticia:" : "Materials about a news story:",
@@ -117,47 +140,92 @@ function buildPrompt(article: Article, related: Article[], lang: Locale): string
   return lines.join("\n");
 }
 
-/** Parte el texto del modelo en párrafos (máx 3). Lanza si vino vacío. */
+function buildLongPrompt(article: Article, fullText: string, lang: Locale): string {
+  const es = lang === "es";
+  return [
+    `${es ? "Título" : "Title"}: ${article.title}`,
+    `${es ? "Medio" : "Outlet"}: ${article.source}`,
+    `${es ? "Fecha" : "Date"}: ${article.publishedAt}`,
+    "",
+    es ? "Texto del artículo original:" : "Original article text:",
+    fullText,
+  ].join("\n");
+}
+
+/** Parte el texto del modelo en párrafos (máx 6). Lanza si vino vacío. */
 function toParagraphs(text: string): string[] {
   const paragraphs = text
     .trim()
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean)
-    .slice(0, 3);
+    .slice(0, 6);
   if (paragraphs.length === 0) throw new Error("empty");
   return paragraphs;
 }
 
-async function generateAnthropic(prompt: string, lang: Locale, cfg: ProviderConfig): Promise<string[]> {
-  const client = new Anthropic({ apiKey: cfg.apiKey, timeout: 25_000, maxRetries: 1 });
-  const response = await client.messages.create({
-    model: cfg.model,
-    max_tokens: 1024,
-    system: SYSTEM[lang],
-    messages: [{ role: "user", content: prompt }],
-  });
-  if (response.stop_reason === "refusal") throw new Error("refusal");
-  const text = response.content
-    .filter((block) => block.type === "text")
-    .map((block) => block.text)
-    .join("\n");
-  return toParagraphs(text);
+/**
+ * Descarga el artículo original y devuelve su texto limpio (o null).
+ * Salta enlaces de Google News (redirect ofuscado) y cualquier fallo/timeout.
+ */
+async function fetchArticleText(url: string): Promise<string | null> {
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    return null;
+  }
+  if (/(^|\.)news\.google\.com$/i.test(host)) return null;
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Global24/1.0",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      signal: AbortSignal.timeout(9000),
+    });
+    if (!res.ok) return null;
+    if (!(res.headers.get("content-type") ?? "").includes("html")) return null;
+
+    const article = await extractFromHtml(await res.text(), url);
+    if (!article?.content) return null;
+    const text = stripHtml(article.content);
+    // Menos de ~600 caracteres no alcanza para un resumen largo con sustancia.
+    return text.length >= 600 ? text.slice(0, 6000) : null;
+  } catch {
+    return null;
+  }
 }
 
-/** Chat Completions compatible con OpenAI (DeepSeek, Groq, OpenRouter…). */
-async function generateOpenAICompatible(prompt: string, lang: Locale, cfg: ProviderConfig): Promise<string[]> {
+async function runModel(cfg: ProviderConfig, system: string, userContent: string, maxTokens: number): Promise<string[]> {
+  if (cfg.kind === "anthropic") {
+    const client = new Anthropic({ apiKey: cfg.apiKey, timeout: 25_000, maxRetries: 1 });
+    const response = await client.messages.create({
+      model: cfg.model,
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: userContent }],
+    });
+    if (response.stop_reason === "refusal") throw new Error("refusal");
+    const text = response.content
+      .filter((block) => block.type === "text")
+      .map((block) => block.text)
+      .join("\n");
+    return toParagraphs(text);
+  }
+
   const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${cfg.apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: cfg.model,
-      max_tokens: 512,
+      max_tokens: maxTokens,
       temperature: 0.4,
       stream: false,
       messages: [
-        { role: "system", content: SYSTEM[lang] },
-        { role: "user", content: prompt },
+        { role: "system", content: system },
+        { role: "user", content: userContent },
       ],
     }),
     signal: AbortSignal.timeout(25_000),
@@ -167,26 +235,27 @@ async function generateOpenAICompatible(prompt: string, lang: Locale, cfg: Provi
   return toParagraphs(data.choices?.[0]?.message?.content ?? "");
 }
 
-async function generateBrief(article: Article, related: Article[], lang: Locale): Promise<string[]> {
+async function generateBrief(article: Article, lang: Locale): Promise<string[]> {
   const cfg = resolveProvider();
   if (!cfg) throw new Error("no provider");
-  const prompt = buildPrompt(article, related, lang);
-  return cfg.kind === "anthropic"
-    ? generateAnthropic(prompt, lang, cfg)
-    : generateOpenAICompatible(prompt, lang, cfg);
+
+  // Camino preferido: resumen largo grounded en el texto real del artículo.
+  const fullText = await fetchArticleText(article.url);
+  if (fullText) {
+    return runModel(cfg, SYSTEM_LONG[lang], buildLongPrompt(article, fullText, lang), 1300);
+  }
+
+  // Fallback: resumen corto desde titular + extracto + titulares relacionados.
+  const related = await relatedArticles(lang, article, 4);
+  return runModel(cfg, SYSTEM_SHORT[lang], buildShortPrompt(article, related, lang), 512);
 }
 
-/* Se cachea 24 h por (lang, artículo). Los relacionados se buscan ADENTRO de
- * la función cacheada: si fueran argumento, su rotación (los pools se
- * revalidan cada 10 min) cambiaría la clave y regeneraría la síntesis —y su
- * costo de API— en cada ciclo. Los fallos lanzan y por eso NO se cachean:
- * el próximo render vuelve a intentar. */
+/* Se cachea 24 h por (lang, artículo): la descarga del artículo y la llamada al
+ * modelo ocurren una sola vez. Los fallos lanzan y por eso NO se cachean: el
+ * próximo render vuelve a intentar. Clave v2 porque el formato cambió a largo. */
 const cachedBrief = unstable_cache(
-  async (lang: Locale, article: Article) => {
-    const related = await relatedArticles(lang, article, 4);
-    return generateBrief(article, related, lang);
-  },
-  ["article-brief"],
+  async (lang: Locale, article: Article) => generateBrief(article, lang),
+  ["article-brief-v2"],
   { revalidate: 86_400 },
 );
 
