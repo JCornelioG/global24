@@ -45,14 +45,19 @@ Variables de entorno:
 - **Webhook** → `NEWSLETTER_WEBHOOK_URL` (reenvía `{ email, locale }` a Zapier/Make/Kit/MailerLite…).
 
 Sin proveedor configurado la caja de suscripción muestra éxito pero no almacena correos. La ruta es [app/api/subscribe/route.ts](app/api/subscribe/route.ts).
-| `SUMMARY_PROVIDER` | Proveedor de IA: `deepseek`, `anthropic` u `openai` | autodetección por key |
-| `DEEPSEEK_API_KEY` | Síntesis con DeepSeek (más económico, compatible OpenAI) | — |
+| `SUMMARY_PROVIDER` | Proveedor de IA: `groq`, `deepseek`, `anthropic` u `openai` | autodetección por key |
+| `GROQ_API_KEY` | Síntesis con Groq/Llama (tier gratis, sin tarjeta) | — |
+| `DEEPSEEK_API_KEY` | Síntesis con DeepSeek (muy económico) | — |
 | `ANTHROPIC_API_KEY` | Síntesis con Claude | — |
-| `SUMMARY_API_KEY` + `SUMMARY_BASE_URL` | Endpoint OpenAI-compatible genérico (Groq, OpenRouter…) | — |
+| `SUMMARY_API_KEY` + `SUMMARY_BASE_URL` | Endpoint OpenAI-compatible genérico (OpenRouter, Together…) | — |
 | `SUMMARY_MODEL` | Sobreescribe el modelo del proveedor | según proveedor |
 | `SUMMARY_AI` | `0` desactiva la síntesis con IA | activado |
 
-**Síntesis con IA**: elegí un proveedor. Sin ninguna key configurada, las páginas de artículo usan un resumen contextual automático (costo cero). Las síntesis se cachean 24 h por artículo e idioma, así el costo por noticia es una sola llamada corta (~500 tokens). Comparativa de costo aproximado por 1M tokens de salida: DeepSeek ≈ US$1,10 · Claude Haiku US$5 · Claude Opus US$25.
+**Síntesis con IA**: elegí un proveedor. Sin ninguna key configurada, las páginas de artículo usan un resumen contextual automático (costo cero). Las síntesis se cachean 24 h por artículo e idioma, así el costo por noticia es una sola llamada corta (~500 tokens).
+
+- **Groq** (recomendado para empezar): `SUMMARY_PROVIDER=groq` + `GROQ_API_KEY`. Tier gratis con Llama, sin tarjeta; modelo por defecto `llama-3.3-70b-versatile`.
+- **DeepSeek**: `SUMMARY_PROVIDER=deepseek` + `DEEPSEEK_API_KEY` (≈ US$1,10 por 1M tokens de salida).
+- **Claude**: `SUMMARY_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` (Haiku US$5 · Opus US$25 por 1M).
 
 Para desplegar en Vercel basta con importar el repo y definir `NEXT_PUBLIC_SITE_URL`. En cualquier otro host: `npm run build && npm start`.
 

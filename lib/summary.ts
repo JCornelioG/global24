@@ -7,13 +7,14 @@ import type { Article, Locale } from "./types";
 /**
  * Síntesis original de un artículo generada por IA. Agnóstica de proveedor:
  *
- *   SUMMARY_PROVIDER=deepseek   → DEEPSEEK_API_KEY (más barato, compatible OpenAI)
+ *   SUMMARY_PROVIDER=groq       → GROQ_API_KEY (tier gratis con Llama, sin tarjeta)
+ *   SUMMARY_PROVIDER=deepseek   → DEEPSEEK_API_KEY (muy económico, compatible OpenAI)
  *   SUMMARY_PROVIDER=anthropic  → ANTHROPIC_API_KEY
- *   SUMMARY_PROVIDER=openai     → SUMMARY_API_KEY + SUMMARY_BASE_URL (OpenAI, Groq,
- *                                 OpenRouter, Together… cualquier endpoint compatible)
+ *   SUMMARY_PROVIDER=openai     → SUMMARY_API_KEY + SUMMARY_BASE_URL (OpenRouter,
+ *                                 Together, OpenAI… cualquier endpoint compatible)
  *
  * Si no se define SUMMARY_PROVIDER, se detecta según qué key exista
- * (DeepSeek tiene prioridad). SUMMARY_MODEL sobreescribe el modelo.
+ * (Groq tiene prioridad). SUMMARY_MODEL sobreescribe el modelo.
  * Devuelve null si no hay proveedor, si SUMMARY_AI=0 o si la generación falla:
  * la página cae a un resumen contextual sin IA.
  */
@@ -28,9 +29,26 @@ interface ProviderConfig {
 function resolveProvider(): ProviderConfig | null {
   const explicit = (process.env.SUMMARY_PROVIDER ?? "").toLowerCase();
   const provider =
-    explicit || (process.env.DEEPSEEK_API_KEY ? "deepseek" : process.env.ANTHROPIC_API_KEY ? "anthropic" : "");
+    explicit ||
+    (process.env.GROQ_API_KEY
+      ? "groq"
+      : process.env.DEEPSEEK_API_KEY
+        ? "deepseek"
+        : process.env.ANTHROPIC_API_KEY
+          ? "anthropic"
+          : "");
 
   switch (provider) {
+    case "groq": {
+      const apiKey = process.env.GROQ_API_KEY;
+      if (!apiKey) return null;
+      return {
+        kind: "openai",
+        apiKey,
+        baseUrl: "https://api.groq.com/openai/v1",
+        model: process.env.SUMMARY_MODEL ?? "llama-3.3-70b-versatile",
+      };
+    }
     case "deepseek": {
       const apiKey = process.env.DEEPSEEK_API_KEY;
       if (!apiKey) return null;
