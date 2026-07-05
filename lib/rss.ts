@@ -1,6 +1,6 @@
 import "server-only";
 import { XMLParser } from "fast-xml-parser";
-import { decodeEntities } from "./format";
+import { decodeEntities, upgradeImageUrl } from "./format";
 
 export interface RssItem {
   title: string;
@@ -73,7 +73,7 @@ function pickImage(item: Record<string, unknown>): string | undefined {
   candidates.sort((a, b) => b.width - a.width);
   const best = candidates[0].url;
   // Solo https: el sitio se sirve por https y el optimizador rechaza http.
-  return best.startsWith("https") ? best : undefined;
+  return best.startsWith("https") ? upgradeImageUrl(best) : undefined;
 }
 
 /**

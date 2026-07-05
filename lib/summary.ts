@@ -2,7 +2,7 @@ import "server-only";
 import { extractFromHtml } from "@extractus/article-extractor";
 import Anthropic from "@anthropic-ai/sdk";
 import { unstable_cache } from "next/cache";
-import { stripHtml } from "./format";
+import { stripHtml, upgradeImageUrl } from "./format";
 import { relatedArticles } from "./news";
 import type { Article, Locale } from "./types";
 
@@ -164,11 +164,17 @@ function toParagraphs(text: string): string[] {
   return paragraphs;
 }
 
+interface FetchedArticle {
+  text: string;
+  /** og:image en alta resolución (o null); mejor que la miniatura del feed. */
+  image: string | null;
+}
+
 /**
- * Descarga el artículo original y devuelve su texto limpio (o null).
+ * Descarga el artículo original y devuelve su texto limpio + su og:image (o null).
  * Salta enlaces de Google News (redirect ofuscado) y cualquier fallo/timeout.
  */
-async function fetchArticleText(url: string): Promise<string | null> {
+async function fetchArticle(url: string): Promise<FetchedArticle | null> {
   let host = "";
   try {
     host = new URL(url).hostname;
@@ -192,7 +198,10 @@ async function fetchArticleText(url: string): Promise<string | null> {
     if (!article?.content) return null;
     const text = stripHtml(article.content);
     // Menos de ~600 caracteres no alcanza para un resumen largo con sustancia.
-    return text.length >= 600 ? text.slice(0, 6000) : null;
+    if (text.length < 600) return null;
+    const image =
+      article.image && article.image.startsWith("https") ? upgradeImageUrl(article.image) : null;
+    return { text: text.slice(0, 6000), image };
   } catch {
     return null;
   }
@@ -235,31 +244,39 @@ async function runModel(cfg: ProviderConfig, system: string, userContent: string
   return toParagraphs(data.choices?.[0]?.message?.content ?? "");
 }
 
-async function generateBrief(article: Article, lang: Locale): Promise<string[]> {
+export interface ArticleBrief {
+  paragraphs: string[];
+  /** og:image en alta resolución si se pudo leer el artículo; si no, null. */
+  image: string | null;
+}
+
+async function generateBrief(article: Article, lang: Locale): Promise<ArticleBrief> {
   const cfg = resolveProvider();
   if (!cfg) throw new Error("no provider");
 
   // Camino preferido: resumen largo grounded en el texto real del artículo.
-  const fullText = await fetchArticleText(article.url);
-  if (fullText) {
-    return runModel(cfg, SYSTEM_LONG[lang], buildLongPrompt(article, fullText, lang), 1300);
+  const fetched = await fetchArticle(article.url);
+  if (fetched) {
+    const paragraphs = await runModel(cfg, SYSTEM_LONG[lang], buildLongPrompt(article, fetched.text, lang), 1300);
+    return { paragraphs, image: fetched.image };
   }
 
   // Fallback: resumen corto desde titular + extracto + titulares relacionados.
   const related = await relatedArticles(lang, article, 4);
-  return runModel(cfg, SYSTEM_SHORT[lang], buildShortPrompt(article, related, lang), 512);
+  const paragraphs = await runModel(cfg, SYSTEM_SHORT[lang], buildShortPrompt(article, related, lang), 512);
+  return { paragraphs, image: null };
 }
 
 /* Se cachea 24 h por (lang, artículo): la descarga del artículo y la llamada al
  * modelo ocurren una sola vez. Los fallos lanzan y por eso NO se cachean: el
- * próximo render vuelve a intentar. Clave v2 porque el formato cambió a largo. */
+ * próximo render vuelve a intentar. Clave v3 porque cambió la forma del retorno. */
 const cachedBrief = unstable_cache(
   async (lang: Locale, article: Article) => generateBrief(article, lang),
-  ["article-brief-v2"],
+  ["article-brief-v3"],
   { revalidate: 86_400 },
 );
 
-export async function getArticleBrief(article: Article, lang: Locale): Promise<string[] | null> {
+export async function getArticleBrief(article: Article, lang: Locale): Promise<ArticleBrief | null> {
   if (aiUnavailable || process.env.SUMMARY_AI === "0") return null;
   if (!resolveProvider()) return null;
   try {

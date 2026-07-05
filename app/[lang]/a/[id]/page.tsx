@@ -52,11 +52,13 @@ export default async function ArticlePage({ params }: Params) {
   if (!article) notFound();
 
   const related = await relatedArticles(lang, article, 6);
-  const aiBrief = await getArticleBrief(article, lang);
+  const brief = await getArticleBrief(article, lang);
 
+  // La og:image del artículo (alta resolución) es mejor que la miniatura del feed.
+  const heroImage = brief?.image ?? article.image;
   const relatedSources = [...new Set(related.map((r) => r.source).filter(Boolean))].slice(0, 3);
   const paragraphs =
-    aiBrief ?? [
+    brief?.paragraphs ?? [
       t(dict.article.fallbackP1, {
         source: article.source,
         category: categoryLabel(article.category, lang),
@@ -72,7 +74,7 @@ export default async function ArticlePage({ params }: Params) {
     headline: article.title,
     datePublished: article.publishedAt,
     inLanguage: lang,
-    image: article.image ? [article.image] : undefined,
+    image: heroImage ? [heroImage] : undefined,
     author: { "@type": "Organization", name: article.source || SITE_NAME },
     publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
     isBasedOn: article.url,
@@ -101,10 +103,10 @@ export default async function ArticlePage({ params }: Params) {
           <span className="text-faint">{timeAgo(article.publishedAt, lang)}</span>
         </p>
 
-        {article.image && (
+        {heroImage && (
           <figure className="mt-6">
             <div className="relative aspect-video overflow-hidden rounded-xl border border-line-soft">
-              <SmartImage src={article.image} alt={article.title} sizes="(min-width: 768px) 768px, 100vw" priority />
+              <SmartImage src={heroImage} alt={article.title} sizes="(min-width: 768px) 768px, 100vw" priority />
             </div>
             <figcaption className="mt-2 text-[11px] text-faint">
               {t(dict.article.quoteLabel, { source: article.source })}
@@ -124,7 +126,7 @@ export default async function ArticlePage({ params }: Params) {
             ))}
           </div>
           <p className="mt-4 text-[11px] italic text-faint">
-            {aiBrief ? dict.article.aiNote : dict.article.editorialNote}
+            {brief?.paragraphs ? dict.article.aiNote : dict.article.editorialNote}
           </p>
         </section>
 

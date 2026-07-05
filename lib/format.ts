@@ -91,6 +91,22 @@ export function decodeEntities(input: string): string {
     .replace(/&amp;/gi, "&");
 }
 
+/**
+ * Sube la resolución de miniaturas de CDNs conocidos. Transformaciones
+ * verificadas y seguras; el resto de las URLs quedan intactas (URLs firmadas
+ * como las de El País no se tocan para no romper la firma).
+ */
+export function upgradeImageUrl(url: string): string {
+  // BBC ichef: el ancho es un segmento de ruta (…/ace/ws/240/…) → subir a 1200.
+  let out = url.replace(
+    /(ichef\.bbci\.co\.uk\/[a-z_/]+\/)(\d{2,4})(\/)/,
+    (_m, prefix, _w, slash) => `${prefix}1200${slash}`,
+  );
+  // WordPress redimensiona con sufijo -800x600 antes de la extensión → original.
+  out = out.replace(/-\d{2,4}x\d{2,4}(\.(?:jpe?g|png|webp|avif))(\?|$)/i, "$1$2");
+  return out;
+}
+
 /** Quita etiquetas HTML y entidades comunes de descripciones RSS. */
 export function stripHtml(html: string): string {
   return decodeEntities(html.replace(/<[^>]*>/g, " "))
