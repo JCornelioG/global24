@@ -36,6 +36,15 @@ Variables de entorno:
 | `NEXT_PUBLIC_SITE_URL` | URL pública del sitio (canonical/sitemap/OG) | `http://localhost:3000` |
 | `GDELT_ENABLED` | `0` desactiva el enriquecimiento GDELT | activado |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Email mostrado en /contacto y páginas legales | `contacto@example.com` |
+| `NEWSLETTER_PROVIDER` | Proveedor del boletín: `buttondown`, `mailchimp`, `resend` o `webhook` | — (caja visual sin guardar) |
+
+**Boletín**: elegí un proveedor en `NEWSLETTER_PROVIDER` y completá sus variables (ver `.env.example`):
+- **Buttondown** → `BUTTONDOWN_API_KEY` (lo más simple).
+- **Mailchimp** → `MAILCHIMP_API_KEY` + `MAILCHIMP_LIST_ID` (doble opt-in automático).
+- **Resend** → `RESEND_API_KEY` + `RESEND_AUDIENCE_ID`.
+- **Webhook** → `NEWSLETTER_WEBHOOK_URL` (reenvía `{ email, locale }` a Zapier/Make/Kit/MailerLite…).
+
+Sin proveedor configurado la caja de suscripción muestra éxito pero no almacena correos. La ruta es [app/api/subscribe/route.ts](app/api/subscribe/route.ts).
 | `ANTHROPIC_API_KEY` | Habilita la síntesis con IA en páginas de artículo | — (fallback sin IA) |
 | `SUMMARY_MODEL` | Modelo para las síntesis (`claude-haiku-4-5` = económico) | `claude-opus-4-8` |
 | `SUMMARY_AI` | `0` desactiva la síntesis con IA | activado |
