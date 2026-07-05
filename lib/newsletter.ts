@@ -19,6 +19,13 @@ function isValidEmail(email: string): boolean {
   return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+/* Log server-side (visible en los logs de Vercel, nunca en el navegador) para
+ * poder depurar una conexión mal configurada: key de otro datacenter, list id
+ * equivocado, permisos, etc. */
+function logProviderError(provider: string, status: number, body: string): void {
+  console.warn(`[newsletter:${provider}] respondió ${status}: ${body.slice(0, 300)}`);
+}
+
 /* --------------------------- Adaptadores ---------------------------------- */
 
 async function subscribeButtondown(email: string): Promise<SubscribeResult> {
@@ -34,6 +41,7 @@ async function subscribeButtondown(email: string): Promise<SubscribeResult> {
   // Buttondown responde 400 al reintentar un correo existente.
   const body = await res.text();
   if (res.status === 400 && /already|exists|duplicate/i.test(body)) return { outcome: "already" };
+  logProviderError("buttondown", res.status, body);
   return { outcome: "error" };
 }
 
@@ -57,6 +65,7 @@ async function subscribeMailchimp(email: string): Promise<SubscribeResult> {
   if (res.ok) return { outcome: "ok" };
   const body = await res.text();
   if (/member exists|already a list member/i.test(body)) return { outcome: "already" };
+  logProviderError("mailchimp", res.status, body);
   return { outcome: "error" };
 }
 
@@ -71,7 +80,9 @@ async function subscribeResend(email: string): Promise<SubscribeResult> {
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   // Resend hace upsert: un contacto existente también responde 2xx.
-  return { outcome: res.ok ? "ok" : "error" };
+  if (res.ok) return { outcome: "ok" };
+  logProviderError("resend", res.status, await res.text());
+  return { outcome: "error" };
 }
 
 /** Modo genérico: reenvía { email, locale } a cualquier URL (Zapier, Make, Kit…). */
@@ -84,7 +95,9 @@ async function subscribeWebhook(email: string, locale: Locale): Promise<Subscrib
     body: JSON.stringify({ email, locale }),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
-  return { outcome: res.ok ? "ok" : "error" };
+  if (res.ok) return { outcome: "ok" };
+  logProviderError("webhook", res.status, await res.text());
+  return { outcome: "error" };
 }
 
 /* ------------------------------ Fachada ----------------------------------- */
