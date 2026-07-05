@@ -1,26 +1,159 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Paleta oscura con acento dorado (estética editorial premium) */
+  --color-bg: #0a0906;
+  --color-bg-soft: #100e09;
+  --color-panel: #16130c;
+  --color-panel-2: #1e1a11;
+  --color-line: #2b2516;
+  --color-line-soft: #1d1910;
+  --color-gold: #e8c15c;
+  --color-gold-bright: #f5d67e;
+  --color-gold-dim: #8a7434;
+  --color-ink: #ede8da;
+  --color-muted: #96907e;
+  --color-faint: #6b6557;
+  --color-up: #34d399;
+  --color-down: #f87171;
+
+  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: var(--color-gold);
+  color: #171307;
+}
+
+/* ------------------------------ Utilidades ------------------------------ */
+
+.container-page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 80rem;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-page {
+    padding-inline: 1.5rem;
+  }
+}
+
+/* Etiqueta pequeña dorada en mayúsculas sobre titulares */
+.kicker {
+  color: var(--color-gold);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Tarjeta con borde que se ilumina al pasar el mouse */
+.card-hover {
+  border: 1px solid var(--color-line-soft);
+  transition: border-color 0.25s ease, transform 0.25s ease, background-color 0.25s ease;
+}
+
+.card-hover:hover {
+  border-color: var(--color-gold-dim);
+  background-color: var(--color-panel-2);
+}
+
+/* Fondo degradado para tarjetas sin imagen */
+.image-fallback {
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(232, 193, 92, 0.16) 0%, transparent 55%),
+    linear-gradient(150deg, #1e1a11 0%, #12100a 60%, #0a0906 100%);
+}
+
+/* Barra superior tipo "gold glow" para el Centro del Mundial */
+.mundial-glow {
+  background:
+    radial-gradient(90% 140% at 50% 0%, rgba(232, 193, 92, 0.22) 0%, rgba(232, 193, 92, 0.06) 45%, transparent 100%),
+    linear-gradient(180deg, #171308 0%, #0e0c07 100%);
+}
+
+/* ------------------------------- Marquesina ------------------------------ */
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 3%, black 97%, transparent);
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 60s linear infinite;
+}
+
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
+/* -------------------------- Punto "EN VIVO" ------------------------------ */
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.55);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 5px rgba(248, 113, 113, 0);
+  }
+}
+
+.live-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--color-down);
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+
+/* ------------------------------ Scrollbars ------------------------------ */
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-line);
+  border-radius: 3px;
 }
