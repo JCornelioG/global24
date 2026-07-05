@@ -35,6 +35,7 @@ Variables de entorno:
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | URL pública del sitio (canonical/sitemap/OG) | `http://localhost:3000` |
 | `GDELT_ENABLED` | `0` desactiva el enriquecimiento GDELT | activado |
+| `NEXT_PUBLIC_CONTACT_EMAIL` | Email mostrado en /contacto y páginas legales | `contacto@example.com` |
 | `ANTHROPIC_API_KEY` | Habilita la síntesis con IA en páginas de artículo | — (fallback sin IA) |
 | `SUMMARY_MODEL` | Modelo para las síntesis (`claude-haiku-4-5` = económico) | `claude-opus-4-8` |
 | `SUMMARY_AI` | `0` desactiva la síntesis con IA | activado |

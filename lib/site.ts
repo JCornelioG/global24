@@ -20,6 +20,9 @@ if (!rawSiteUrl && process.env.NODE_ENV === "production" && typeof window === "u
 
 export const SITE_URL = rawSiteUrl ?? "http://localhost:3000";
 
+/** Email de contacto público (páginas legales y de contacto). */
+export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "contacto@example.com";
+
 /** Valida un segmento de idioma de la URL; cae a "es" si no es válido. */
 export function asLocale(raw: string): Locale {
   return (LOCALES as readonly string[]).includes(raw) ? (raw as Locale) : "es";

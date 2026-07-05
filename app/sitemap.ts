@@ -16,6 +16,9 @@ const PATHS: SitemapPath[] = [
     changeFrequency: "hourly" as const,
     priority: 0.8,
   })),
+  { path: "/contacto", changeFrequency: "monthly", priority: 0.3 },
+  { path: "/privacidad", changeFrequency: "yearly", priority: 0.2 },
+  { path: "/cookies", changeFrequency: "yearly", priority: 0.2 },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

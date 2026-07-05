@@ -123,6 +123,9 @@ const es = {
     about: "Global24 es un agregador de noticias en tiempo real. Los titulares e imágenes pertenecen a sus medios originales y enlazan a la fuente.",
     sources: "Fuentes: Google News, GDELT Project y feeds RSS de medios internacionales. Datos de mercado: Yahoo Finance.",
     rights: "Todos los derechos reservados.",
+    privacy: "Política de privacidad",
+    cookies: "Política de cookies",
+    contact: "Contacto",
   },
   meta: {
     homeTitle: "Global24 — Noticias del mundo, al instante",
@@ -259,6 +262,9 @@ const en: typeof es = {
     about: "Global24 is a real-time news aggregator. Headlines and images belong to their original outlets and link to the source.",
     sources: "Sources: Google News, GDELT Project and RSS feeds from international outlets. Market data: Yahoo Finance.",
     rights: "All rights reserved.",
+    privacy: "Privacy policy",
+    cookies: "Cookie policy",
+    contact: "Contact",
   },
   meta: {
     homeTitle: "Global24 — World news, in real time",

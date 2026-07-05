@@ -50,6 +50,22 @@ export default function Footer({ lang }: { lang: Locale }) {
         <div className="flex flex-col gap-3 sm:col-span-2 lg:col-span-1">
           <p className="text-xs leading-relaxed text-faint">{dict.footer.sources}</p>
           <p className="text-xs leading-relaxed text-faint">{dict.common.externalNote}</p>
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5">
+            {[
+              { href: "/privacidad", label: dict.footer.privacy },
+              { href: "/cookies", label: dict.footer.cookies },
+              { href: "/contacto", label: dict.footer.contact },
+            ].map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={localePath(lang, item.href)}
+                  className="text-xs text-muted transition-colors hover:text-gold"
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
           <p className="mt-auto text-xs text-faint">
             © {year} {SITE_NAME}. {dict.footer.rights}
           </p>
