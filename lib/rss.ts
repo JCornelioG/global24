@@ -1,5 +1,6 @@
 import "server-only";
 import { XMLParser } from "fast-xml-parser";
+import { decodeEntities } from "./format";
 
 export interface RssItem {
   title: string;
@@ -18,10 +19,12 @@ const parser = new XMLParser({
   trimValues: true,
 });
 
-/* Los nodos pueden llegar como string, { "#text" }, { "__cdata" } o número. */
+/* Los nodos pueden llegar como string, { "#text" }, { "__cdata" } o número.
+ * Se decodifican entidades HTML: los feeds doble-codificados (WordPress)
+ * dejan literales como "&#8217;" en títulos y descripciones. */
 function text(node: unknown): string {
   if (node == null) return "";
-  if (typeof node === "string") return node.trim();
+  if (typeof node === "string") return decodeEntities(node).trim();
   if (typeof node === "number") return String(node);
   if (typeof node === "object") {
     const obj = node as Record<string, unknown>;

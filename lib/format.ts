@@ -58,19 +58,42 @@ export function stableId(input: string): string {
   return (hash >>> 0).toString(16);
 }
 
+function fromCodePoint(n: number): string {
+  // String.fromCodePoint lanza RangeError fuera de [1, 0x10FFFF].
+  return Number.isFinite(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : "";
+}
+
+const NAMED_ENTITIES: Record<string, string> = {
+  nbsp: " ",
+  quot: '"',
+  apos: "'",
+  lsquo: "‘",
+  rsquo: "’",
+  ldquo: "“",
+  rdquo: "”",
+  ndash: "–",
+  mdash: "—",
+  hellip: "…",
+  lt: "<",
+  gt: ">",
+};
+
+/**
+ * Decodifica entidades HTML comunes. Necesario porque varios feeds (típico de
+ * WordPress) llegan doble-codificados: el parser XML deja literales "&#8217;".
+ */
+export function decodeEntities(input: string): string {
+  return input
+    .replace(/&#(\d+);/g, (_, n: string) => fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n: string) => fromCodePoint(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (match, name: string) => NAMED_ENTITIES[name.toLowerCase()] ?? match)
+    // &amp; al final: si fuera primero, "&amp;lt;" se decodificaría dos veces.
+    .replace(/&amp;/gi, "&");
+}
+
 /** Quita etiquetas HTML y entidades comunes de descripciones RSS. */
 export function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n: string) => String.fromCodePoint(parseInt(n, 16)))
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    // &amp; al final: si fuera primero, "&amp;lt;" se decodificaría dos veces.
-    .replace(/&amp;/g, "&")
+  return decodeEntities(html.replace(/<[^>]*>/g, " "))
     .replace(/\s+/g, " ")
     .trim();
 }
