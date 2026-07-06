@@ -1,18 +1,19 @@
 import { formatDateShort } from "@/lib/format";
 import { getDict } from "@/lib/i18n";
-import type { Locale } from "@/lib/types";
-import { getWorldCup } from "@/lib/worldcup";
+import type { Locale, WorldCupData } from "@/lib/types";
 
 /** Línea de fases del torneo con la fase actual resaltada en dorado. */
 export default function PhaseTimeline({
   lang,
+  data,
   currentPhaseId,
 }: {
   lang: Locale;
+  data: WorldCupData;
   currentPhaseId: string;
 }) {
   const dict = getDict(lang);
-  const phases = getWorldCup().phases;
+  const phases = data.phases;
   const currentIdx = phases.findIndex((p) => p.id === currentPhaseId);
 
   return (

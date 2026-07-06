@@ -1,11 +1,11 @@
+import Flag from "./Flag";
 import { getDict } from "@/lib/i18n";
-import type { Locale } from "@/lib/types";
-import { getWorldCup, teamFlag, teamName } from "@/lib/worldcup";
+import type { Locale, WorldCupData } from "@/lib/types";
+import { teamFlag, teamName } from "@/lib/worldcup";
 
 /** Tabla de goleadores del torneo. */
-export default function ScorersTable({ lang }: { lang: Locale }) {
+export default function ScorersTable({ lang, data }: { lang: Locale; data: WorldCupData }) {
   const dict = getDict(lang);
-  const scorers = getWorldCup().scorers;
 
   return (
     <div className="overflow-hidden rounded-xl border border-line-soft bg-panel">
@@ -20,7 +20,7 @@ export default function ScorersTable({ lang }: { lang: Locale }) {
           </tr>
         </thead>
         <tbody>
-          {scorers.map((scorer, i) => (
+          {data.scorers.map((scorer, i) => (
             <tr
               key={scorer.player}
               className={`border-b border-line-soft last:border-b-0 ${i === 0 ? "bg-panel-2" : ""}`}
@@ -30,11 +30,13 @@ export default function ScorersTable({ lang }: { lang: Locale }) {
               </td>
               <td className="px-2 py-3">
                 <span className="flex items-center gap-2">
-                  <span aria-hidden className="text-base leading-none">{teamFlag(scorer.team)}</span>
+                  <Flag flag={teamFlag(data, scorer.team)} />
                   <span className={`${i === 0 ? "font-bold" : "font-medium"} text-ink`}>{scorer.player}</span>
                 </span>
               </td>
-              <td className="hidden px-2 py-3 text-muted sm:table-cell">{teamName(scorer.team, lang)}</td>
+              <td className="hidden px-2 py-3 text-muted sm:table-cell">
+                {teamName(data, scorer.team, lang) || scorer.team}
+              </td>
               <td className="px-2 py-3 text-center font-display text-base font-bold tabular-nums text-gold">
                 {scorer.goals}
               </td>
@@ -43,6 +45,7 @@ export default function ScorersTable({ lang }: { lang: Locale }) {
           ))}
         </tbody>
       </table>
+      <p className="border-t border-line-soft px-4 py-3 text-[11px] text-faint">{dict.mundial.dataNote}</p>
     </div>
   );
 }

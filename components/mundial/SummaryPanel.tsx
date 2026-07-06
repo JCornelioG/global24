@@ -1,12 +1,11 @@
 import { formatNumber } from "@/lib/format";
 import { getDict } from "@/lib/i18n";
-import type { Locale } from "@/lib/types";
-import { getWorldCup } from "@/lib/worldcup";
+import type { Locale, WorldCupData } from "@/lib/types";
 
 /** Resumen editorial del torneo: momentos destacados + números clave. */
-export default function SummaryPanel({ lang }: { lang: Locale }) {
+export default function SummaryPanel({ lang, data }: { lang: Locale; data: WorldCupData }) {
   const dict = getDict(lang);
-  const { highlights, stats } = getWorldCup();
+  const { highlights, stats } = data;
 
   const statCards = [
     { label: dict.mundial.statMatches, value: formatNumber(stats.matchesPlayed, lang, 0) },

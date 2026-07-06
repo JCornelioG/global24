@@ -8,18 +8,20 @@ import PhaseTimeline from "./PhaseTimeline";
 import ScorersTable from "./ScorersTable";
 import SummaryPanel from "./SummaryPanel";
 import { getDict } from "@/lib/i18n";
-import type { Locale } from "@/lib/types";
+import type { Locale, WorldCupData } from "@/lib/types";
 
 const TABS = ["avance", "resumen", "goleadores", "partidos", "grupos"] as const;
 type TabId = (typeof TABS)[number];
 
-/** Hub con pestañas del Centro del Mundial. */
+/** Hub con pestañas del Centro del Mundial. Recibe los datos (en vivo o estáticos). */
 export default function MundialHub({
   lang,
   currentPhaseId,
+  data,
 }: {
   lang: Locale;
   currentPhaseId: string;
+  data: WorldCupData;
 }) {
   const dict = getDict(lang);
   const [tab, setTab] = useState<TabId>("avance");
@@ -55,14 +57,14 @@ export default function MundialHub({
       <div className="mt-8">
         {tab === "avance" && (
           <div className="flex flex-col gap-10">
-            <PhaseTimeline lang={lang} currentPhaseId={currentPhaseId} />
-            <Bracket lang={lang} />
+            <PhaseTimeline lang={lang} data={data} currentPhaseId={currentPhaseId} />
+            <Bracket lang={lang} data={data} />
           </div>
         )}
-        {tab === "resumen" && <SummaryPanel lang={lang} />}
-        {tab === "goleadores" && <ScorersTable lang={lang} />}
-        {tab === "partidos" && <MatchList lang={lang} />}
-        {tab === "grupos" && <GroupsGrid lang={lang} />}
+        {tab === "resumen" && <SummaryPanel lang={lang} data={data} />}
+        {tab === "goleadores" && <ScorersTable lang={lang} data={data} />}
+        {tab === "partidos" && <MatchList lang={lang} data={data} />}
+        {tab === "grupos" && <GroupsGrid lang={lang} data={data} />}
       </div>
     </div>
   );

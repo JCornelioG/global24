@@ -1,7 +1,8 @@
+import Flag from "./Flag";
 import { formatDateLong } from "@/lib/format";
 import { getDict } from "@/lib/i18n";
-import type { Locale, WCMatch } from "@/lib/types";
-import { getWorldCup, roundLabel, teamFlag, teamName } from "@/lib/worldcup";
+import type { Locale, WCMatch, WorldCupData } from "@/lib/types";
+import { roundLabel, teamFlag, teamName } from "@/lib/worldcup";
 
 function groupByDate(matches: WCMatch[]): [string, WCMatch[]][] {
   const map = new Map<string, WCMatch[]>();
@@ -13,24 +14,34 @@ function groupByDate(matches: WCMatch[]): [string, WCMatch[]][] {
   return [...map.entries()];
 }
 
-function Side({ match, side, lang }: { match: WCMatch; side: "home" | "away"; lang: Locale }) {
+function Side({
+  match,
+  side,
+  lang,
+  data,
+}: {
+  match: WCMatch;
+  side: "home" | "away";
+  lang: Locale;
+  data: WorldCupData;
+}) {
   const code = match[side];
   const placeholder = side === "home" ? match.homePlaceholder : match.awayPlaceholder;
-  const name = code ? teamName(code, lang) : (placeholder?.[lang] ?? "—");
+  const name = code ? teamName(data, code, lang) : (placeholder?.[lang] ?? "—");
   return (
     <span
       className={`flex min-w-0 items-center gap-2 ${side === "home" ? "justify-end text-right" : ""} ${
         code ? "text-ink" : "italic text-faint"
       }`}
     >
-      {side === "away" && <span aria-hidden className="text-base leading-none">{code ? teamFlag(code) : "⚽"}</span>}
+      {side === "away" && (code ? <Flag flag={teamFlag(data, code)} /> : <span aria-hidden>⚽</span>)}
       <span className="truncate text-sm font-medium">{name}</span>
-      {side === "home" && <span aria-hidden className="text-base leading-none">{code ? teamFlag(code) : "⚽"}</span>}
+      {side === "home" && (code ? <Flag flag={teamFlag(data, code)} /> : <span aria-hidden>⚽</span>)}
     </span>
   );
 }
 
-function MatchRow({ match, lang }: { match: WCMatch; lang: Locale }) {
+function MatchRow({ match, lang, data }: { match: WCMatch; lang: Locale; data: WorldCupData }) {
   const dict = getDict(lang);
   const finished = match.status === "finished";
   const pens =
@@ -41,7 +52,7 @@ function MatchRow({ match, lang }: { match: WCMatch; lang: Locale }) {
   return (
     <li className="rounded-lg border border-line-soft bg-panel px-4 py-3">
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <Side match={match} side="home" lang={lang} />
+        <Side match={match} side="home" lang={lang} data={data} />
         <div className="flex flex-col items-center">
           {finished ? (
             <>
@@ -56,7 +67,7 @@ function MatchRow({ match, lang }: { match: WCMatch; lang: Locale }) {
             </span>
           )}
         </div>
-        <Side match={match} side="away" lang={lang} />
+        <Side match={match} side="away" lang={lang} data={data} />
       </div>
       <p className="mt-2 text-center text-[11px] text-faint">
         {roundLabel(match.round, lang)}
@@ -67,14 +78,13 @@ function MatchRow({ match, lang }: { match: WCMatch; lang: Locale }) {
 }
 
 /** Calendario y resultados de la fase eliminatoria, agrupados por fecha. */
-export default function MatchList({ lang }: { lang: Locale }) {
+export default function MatchList({ lang, data }: { lang: Locale; data: WorldCupData }) {
   const dict = getDict(lang);
-  const matches = getWorldCup().matches;
 
-  const upcoming = matches
+  const upcoming = data.matches
     .filter((m) => m.status !== "finished")
     .sort((a, b) => `${a.date}T${a.time ?? ""}`.localeCompare(`${b.date}T${b.time ?? ""}`));
-  const finished = matches
+  const finished = data.matches
     .filter((m) => m.status === "finished")
     .sort((a, b) => `${b.date}T${b.time ?? ""}`.localeCompare(`${a.date}T${a.time ?? ""}`));
 
@@ -100,7 +110,7 @@ export default function MatchList({ lang }: { lang: Locale }) {
                     </p>
                     <ul className="flex flex-col gap-2">
                       {dayMatches.map((m) => (
-                        <MatchRow key={m.id} match={m} lang={lang} />
+                        <MatchRow key={m.id} match={m} lang={lang} data={data} />
                       ))}
                     </ul>
                   </div>

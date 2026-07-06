@@ -1,16 +1,19 @@
+import Flag from "./Flag";
 import { formatDateShort } from "@/lib/format";
 import { getDict } from "@/lib/i18n";
-import type { Locale, WCMatch } from "@/lib/types";
+import type { Locale, WCMatch, WorldCupData } from "@/lib/types";
 import { matchWinner, teamFlag, teamName } from "@/lib/worldcup";
 
 function TeamRow({
   match,
   side,
   lang,
+  data,
 }: {
   match: WCMatch;
   side: "home" | "away";
   lang: Locale;
+  data: WorldCupData;
 }) {
   const code = match[side];
   const placeholder = side === "home" ? match.homePlaceholder : match.awayPlaceholder;
@@ -30,13 +33,13 @@ function TeamRow({
 
   return (
     <div className="flex h-5 items-center gap-1.5">
-      <span aria-hidden className="text-[13px] leading-none">{teamFlag(code)}</span>
+      <Flag flag={teamFlag(data, code)} />
       <span
         className={`min-w-0 flex-1 truncate text-xs ${
           finishedLoser ? "text-faint" : "font-semibold text-ink"
         }`}
       >
-        {teamName(code, lang)}
+        {teamName(data, code, lang)}
       </span>
       {score !== undefined && (
         <span className="flex items-baseline gap-1">
@@ -56,10 +59,12 @@ function TeamRow({
 export default function MatchCard({
   match,
   lang,
+  data,
   highlight = false,
 }: {
   match: WCMatch;
   lang: Locale;
+  data: WorldCupData;
   highlight?: boolean;
 }) {
   const dict = getDict(lang);
@@ -77,8 +82,8 @@ export default function MatchCard({
       }`}
     >
       <div className="flex flex-col gap-1">
-        <TeamRow match={match} side="home" lang={lang} />
-        <TeamRow match={match} side="away" lang={lang} />
+        <TeamRow match={match} side="home" lang={lang} data={data} />
+        <TeamRow match={match} side="away" lang={lang} data={data} />
       </div>
       <p className={`mt-1.5 text-[10px] ${match.status === "live" ? "font-bold text-down" : "text-faint"}`}>
         {footer}

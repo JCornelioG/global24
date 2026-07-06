@@ -1,28 +1,31 @@
 import Link from "next/link";
+import Flag from "./Flag";
 import { getDict } from "@/lib/i18n";
 import { localePath } from "@/lib/site";
-import type { Locale, WCMatch } from "@/lib/types";
-import { teamFlag, todayMatches } from "@/lib/worldcup";
+import type { Locale, WCMatch, WorldCupData } from "@/lib/types";
+import { getWorldCupData } from "@/lib/worldcupApi";
+import { todayMatches } from "@/lib/worldcup";
 
-function MatchChip({ match }: { match: WCMatch }) {
+function MatchChip({ match, data }: { match: WCMatch; data: WorldCupData }) {
   const finished = match.status === "finished";
   return (
     <span className="flex items-center gap-2 rounded-full border border-line bg-bg-soft px-3.5 py-1.5 text-xs font-semibold">
-      <span aria-hidden className="text-sm leading-none">{teamFlag(match.home)}</span>
+      <Flag flag={data.teams[match.home ?? ""]?.flag} />
       <span className="text-ink">{match.home ?? "—"}</span>
       <span className="tabular-nums text-gold">
         {finished ? `${match.homeScore}–${match.awayScore}` : (match.time ?? "vs")}
       </span>
       <span className="text-ink">{match.away ?? "—"}</span>
-      <span aria-hidden className="text-sm leading-none">{teamFlag(match.away)}</span>
+      <Flag flag={data.teams[match.away ?? ""]?.flag} />
     </span>
   );
 }
 
 /** Banner del Mundial para la portada, con los partidos del día. */
-export default function MundialPromo({ lang }: { lang: Locale }) {
+export default async function MundialPromo({ lang }: { lang: Locale }) {
   const dict = getDict(lang);
-  const today = todayMatches();
+  const data = await getWorldCupData();
+  const today = todayMatches(data);
 
   return (
     <section className="mundial-glow overflow-hidden rounded-xl border border-line">
@@ -46,7 +49,7 @@ export default function MundialPromo({ lang }: { lang: Locale }) {
               </p>
               <div className="flex flex-wrap gap-2 lg:justify-end">
                 {today.slice(0, 3).map((m) => (
-                  <MatchChip key={m.id} match={m} />
+                  <MatchChip key={m.id} match={m} data={data} />
                 ))}
               </div>
             </>

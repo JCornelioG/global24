@@ -55,6 +55,9 @@ Sin proveedor configurado la caja de suscripción muestra éxito pero no almacen
 | `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION` | Verificación de propiedad en Search Console / Bing (meta tag) | — |
 | `NEXT_PUBLIC_ADSENSE_CLIENT` | ID de editor AdSense (`ca-pub-…`): carga el script y genera `/ads.txt` | — (sin anuncios) |
 | `NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE` | Id del bloque manual en la página de artículo (opcional, post-aprobación) | — |
+| `WORLDCUP_API_TOKEN` | Token JWT de worldcup26.ir para datos en vivo del Mundial | — (usa bracket estático) |
+
+**Centro del Mundial**: con `WORLDCUP_API_TOKEN` definido, resultados, cruces y grupos se traen en vivo de [worldcup26.ir](https://worldcup26.ir) (API gratuita, token ~84 días) y se cachean 10 min; las banderas son imágenes de flagcdn. Sin token, o si la API falla, cae automáticamente al bracket estático de [data/worldcup.ts](data/worldcup.ts) (goleadores y highlights son editoriales, siempre de ese archivo).
 
 **Síntesis con IA**: elegí un proveedor. Sin ninguna key configurada, las páginas de artículo usan un resumen contextual automático (costo cero). Las síntesis se cachean 24 h por artículo e idioma, así el costo por noticia es una sola llamada corta (~500 tokens).
 

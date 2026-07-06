@@ -1,22 +1,24 @@
-import { WORLD_CUP } from "@/data/worldcup";
 import type { Locale, RoundId, WCMatch, WCPhase, WorldCupData } from "./types";
 
-export function getWorldCup(): WorldCupData {
-  return WORLD_CUP;
-}
+/*
+ * Helpers PUROS sobre un objeto WorldCupData ya cargado. Sin imports de datos
+ * ni de módulos server-only, así los componentes cliente del Mundial pueden
+ * usarlos. La obtención de datos (getWorldCupData) vive en worldcupApi.ts.
+ */
 
-export function teamName(code: string | undefined, lang: Locale): string {
-  const team = code ? WORLD_CUP.teams[code] : undefined;
+export function teamName(data: WorldCupData, code: string | undefined, lang: Locale): string {
+  const team = code ? data.teams[code] : undefined;
   if (!team) return "";
   return lang === "es" ? team.nameEs : team.nameEn;
 }
 
-export function teamFlag(code: string | undefined): string {
-  return (code && WORLD_CUP.teams[code]?.flag) || "⚽";
+/** Bandera del equipo: URL de imagen (API) o emoji (estático); "" si no hay. */
+export function teamFlag(data: WorldCupData, code: string | undefined): string {
+  return (code && data.teams[code]?.flag) || "";
 }
 
-export function matchesByRound(round: RoundId): WCMatch[] {
-  return WORLD_CUP.matches.filter((m) => m.round === round);
+export function matchesByRound(data: WorldCupData, round: RoundId): WCMatch[] {
+  return data.matches.filter((m) => m.round === round);
 }
 
 /** Fecha local "YYYY-MM-DD" (sin depender de la zona UTC). */
@@ -27,18 +29,18 @@ export function isoDate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-export function matchesOn(date: string): WCMatch[] {
-  return WORLD_CUP.matches.filter((m) => m.date === date);
+export function matchesOn(data: WorldCupData, date: string): WCMatch[] {
+  return data.matches.filter((m) => m.date === date);
 }
 
-export function todayMatches(now: Date = new Date()): WCMatch[] {
-  return matchesOn(isoDate(now));
+export function todayMatches(data: WorldCupData, now: Date = new Date()): WCMatch[] {
+  return matchesOn(data, isoDate(now));
 }
 
 /** Fase en curso; si el torneo no empezó devuelve la primera, si terminó la última. */
-export function currentPhase(now: Date = new Date()): WCPhase {
+export function currentPhase(data: WorldCupData, now: Date = new Date()): WCPhase {
   const today = isoDate(now);
-  const phases = WORLD_CUP.phases;
+  const phases = data.phases;
   for (const phase of phases) {
     if (today >= phase.start && today <= phase.end) return phase;
   }
@@ -50,10 +52,10 @@ export function currentPhase(now: Date = new Date()): WCPhase {
  * Partidos en vivo: los marcados "live" y, como aproximación, los de hoy
  * cuya hora de inicio quedó dentro de las últimas 2 horas.
  */
-export function liveMatches(now: Date = new Date()): WCMatch[] {
+export function liveMatches(data: WorldCupData, now: Date = new Date()): WCMatch[] {
   const today = isoDate(now);
   const minutesNow = now.getHours() * 60 + now.getMinutes();
-  return WORLD_CUP.matches.filter((m) => {
+  return data.matches.filter((m) => {
     if (m.status === "live") return true;
     if (m.status !== "scheduled" || m.date !== today || !m.time) return false;
     const [h, min] = m.time.split(":").map(Number);

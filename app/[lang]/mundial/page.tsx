@@ -3,9 +3,11 @@ import MundialHub from "@/components/mundial/MundialHub";
 import { getDict } from "@/lib/i18n";
 import { asLocale, SITE_URL } from "@/lib/site";
 import { LOCALES, type Locale } from "@/lib/types";
+import { getWorldCupData } from "@/lib/worldcupApi";
 import { currentPhase, liveMatches, todayMatches } from "@/lib/worldcup";
 
-export const revalidate = 3600;
+// 10 min: la síntesis en vivo del Mundial se cachea igual de seguido.
+export const revalidate = 600;
 
 export function generateStaticParams() {
   return LOCALES.map((lang) => ({ lang }));
@@ -49,10 +51,11 @@ export default async function MundialPage({
   const lang = asLocale((await params).lang) as Locale;
   const dict = getDict(lang);
 
+  const data = await getWorldCupData();
   const now = new Date();
-  const phase = currentPhase(now);
-  const today = todayMatches(now);
-  const live = liveMatches(now);
+  const phase = currentPhase(data, now);
+  const today = todayMatches(data, now);
+  const live = liveMatches(data, now);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -101,7 +104,7 @@ export default async function MundialPage({
       </section>
 
       <div className="container-page py-8 sm:py-10">
-        <MundialHub lang={lang} currentPhaseId={phase.id} />
+        <MundialHub lang={lang} currentPhaseId={phase.id} data={data} />
       </div>
     </>
   );

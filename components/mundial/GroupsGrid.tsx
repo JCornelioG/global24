@@ -1,17 +1,17 @@
+import Flag from "./Flag";
 import { getDict } from "@/lib/i18n";
-import type { Locale } from "@/lib/types";
-import { getWorldCup, teamFlag, teamName } from "@/lib/worldcup";
+import type { Locale, WorldCupData } from "@/lib/types";
+import { teamFlag, teamName } from "@/lib/worldcup";
 
 /** Tablas de posiciones de los 12 grupos (A–L). */
-export default function GroupsGrid({ lang }: { lang: Locale }) {
+export default function GroupsGrid({ lang, data }: { lang: Locale; data: WorldCupData }) {
   const dict = getDict(lang);
   const t = dict.mundial.table;
-  const groups = getWorldCup().groups;
 
   return (
     <div>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {groups.map((group) => (
+        {data.groups.map((group) => (
           <div key={group.id} className="rounded-xl border border-line-soft bg-panel p-4">
             <h3 className="mb-3 font-display text-sm font-bold uppercase tracking-[0.14em] text-gold">
               {dict.mundial.group} {group.id}
@@ -32,9 +32,9 @@ export default function GroupsGrid({ lang }: { lang: Locale }) {
                   <tr key={row.team} className="border-t border-line-soft">
                     <td className="py-1.5 pr-2">
                       <span className="flex items-center gap-1.5">
-                        <span aria-hidden className="text-[13px] leading-none">{teamFlag(row.team)}</span>
+                        <Flag flag={teamFlag(data, row.team)} />
                         <span className={`truncate ${row.advanced ? "font-semibold text-ink" : "text-muted"}`}>
-                          {teamName(row.team, lang)}
+                          {teamName(data, row.team, lang) || row.team}
                         </span>
                         {row.advanced && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-gold" />}
                       </span>
