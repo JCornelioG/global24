@@ -124,6 +124,16 @@ async function buildLiveData(token: string): Promise<WorldCupData> {
       };
     });
 
+  // La numeración FIFA alterna mitades en cuartos (id 97,99 = izquierda;
+  // 98,100 = derecha). El cuadro divide izquierda/derecha por orden, así que se
+  // reordenan a [izq-arriba, izq-abajo, der-arriba, der-abajo] para que cada
+  // cuarto quede junto a los octavos que lo alimentan.
+  const qfStart = matches.findIndex((m) => m.round === "qf");
+  if (qfStart >= 0 && matches[qfStart + 3]?.round === "qf") {
+    const [a, b, c, d] = matches.slice(qfStart, qfStart + 4);
+    matches.splice(qfStart, 4, a, c, b, d);
+  }
+
   const groups: WCGroup[] = groupsRes.groups
     .map((gr): WCGroup => ({
       id: gr.name,
@@ -165,7 +175,7 @@ async function buildLiveData(token: string): Promise<WorldCupData> {
   };
 }
 
-const cachedLive = unstable_cache((token: string) => buildLiveData(token), ["worldcup-live"], {
+const cachedLive = unstable_cache((token: string) => buildLiveData(token), ["worldcup-live-v2"], {
   revalidate: 600,
 });
 
