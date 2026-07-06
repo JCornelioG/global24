@@ -52,6 +52,9 @@ Sin proveedor configurado la caja de suscripción muestra éxito pero no almacen
 | `SUMMARY_API_KEY` + `SUMMARY_BASE_URL` | Endpoint OpenAI-compatible genérico (OpenRouter, Together…) | — |
 | `SUMMARY_MODEL` | Sobreescribe el modelo del proveedor | según proveedor |
 | `SUMMARY_AI` | `0` desactiva la síntesis con IA | activado |
+| `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION` | Verificación de propiedad en Search Console / Bing (meta tag) | — |
+| `NEXT_PUBLIC_ADSENSE_CLIENT` | ID de editor AdSense (`ca-pub-…`): carga el script y genera `/ads.txt` | — (sin anuncios) |
+| `NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE` | Id del bloque manual en la página de artículo (opcional, post-aprobación) | — |
 
 **Síntesis con IA**: elegí un proveedor. Sin ninguna key configurada, las páginas de artículo usan un resumen contextual automático (costo cero). Las síntesis se cachean 24 h por artículo e idioma, así el costo por noticia es una sola llamada corta (~500 tokens).
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import AdSlot from "@/components/AdSlot";
 import NewsCard from "@/components/NewsCard";
 import SectionHeading from "@/components/SectionHeading";
 import ShareRow from "@/components/ShareRow";
@@ -153,6 +154,10 @@ export default async function ArticlePage({ params }: Params) {
 
         <p className="mt-4 text-[11px] text-faint">{t(dict.article.disclaimer, { source: article.source })}</p>
       </article>
+
+      <div className="mx-auto mt-10 max-w-3xl">
+        <AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE} />
+      </div>
 
       {related.length > 0 && (
         <section className="mx-auto mt-14 max-w-5xl">

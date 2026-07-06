@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Sora } from "next/font/google";
 import { notFound } from "next/navigation";
+import Script from "next/script";
 import "../globals.css";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import MarketTickerBar from "@/components/ticker/MarketTickerBar";
 import { getDict } from "@/lib/i18n";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { ADSENSE_CLIENT, SITE_NAME, SITE_URL } from "@/lib/site";
 import { LOCALES, type Locale } from "@/lib/types";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
@@ -97,6 +98,15 @@ export default async function LangLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify([orgJsonLd, siteJsonLd]) }}
         />
+        {ADSENSE_CLIENT && (
+          <Script
+            id="adsense-loader"
+            async
+            strategy="afterInteractive"
+            crossOrigin="anonymous"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          />
+        )}
         <MarketTickerBar lang={lang} />
         <Header lang={lang} />
         <main id="contenido">{children}</main>
