@@ -48,6 +48,13 @@ export async function generateMetadata({
     },
     twitter: { card: "summary_large_image", title: dict.meta.homeTitle, description: dict.meta.homeDesc },
     robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large" } },
+    // Verificación de propiedad: pegá el código en las env vars y redeploy.
+    verification: {
+      google: process.env.GOOGLE_SITE_VERIFICATION,
+      other: process.env.BING_SITE_VERIFICATION
+        ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION }
+        : {},
+    },
   };
 }
 
