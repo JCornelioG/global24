@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { WORLD_CUP } from "@/data/worldcup";
-import type { GroupStanding, RoundId, Team, WCGroup, WCMatch, WorldCupData } from "./types";
+import type { GroupStanding, RoundId, Scorer, Team, WCGroup, WCHighlight, WCMatch, WorldCupData } from "./types";
 
 /*
  * Datos en vivo del Mundial desde worldcup26.ir (API REST gratuita, token JWT
@@ -27,6 +27,8 @@ interface ApiGame {
   away_team_id: string;
   home_score: string;
   away_score: string;
+  home_scorers: string;
+  away_scorers: string;
   local_date: string;
   finished: string;
   time_elapsed: string;
@@ -66,6 +68,49 @@ function toIso(local: string): { date: string; time?: string } {
 function num(v: string): number | undefined {
   const n = Number(v);
   return Number.isFinite(n) ? n : undefined;
+}
+
+/*
+ * Los goleadores que devuelve la API vienen a veces mal transliterados
+ * (p. ej. "Hri Kin" = Harry Kane) y hasta partidos en varias grafías, lo que
+ * descuadra el conteo. Este mapa normaliza las grafías conocidas a un nombre
+ * canónico y fusiona los goles; las no mapeadas pasan tal cual. Al avanzar el
+ * torneo puede requerir sumar goleadores nuevos.
+ */
+const SCORER_CANON: Record<string, string> = {
+  "Hri Kin": "Harry Kane",
+  "H. Kane": "Harry Kane",
+  "K. Mbappé": "Kylian Mbappé",
+  "Jvd Blingham": "Jude Bellingham",
+  "Kvdi Khakpv": "Cody Gakpo",
+  "Jvlian Kviinvnz": "Julián Quiñones",
+  "Sharl D Ktlar": "Charles De Ketelaere",
+  "Dniz Avndav": "Deniz Undav",
+  "K. Havertz": "Kai Havertz",
+  "Nikvlas Ph Ph": "Nicolas Pépé",
+  "Svfian Rhimi": "Soufiane Rahimi",
+  "Azdin Avnahi": "Azzedine Ounahi",
+  "Jvhan Mnzambi": "Johan Manzambi",
+  "Y.Ayari": "Yasin Ayari",
+  "F. Balogun": "Folarin Balogun",
+  "Dnil Mvnvz": "Daniel Muñoz",
+  "Paph Gviih": "Pape Gueye",
+  "Aiash Ivida": "Ayase Ueda",
+  "Asmaail Saibari": "Ismael Saibari",
+};
+
+/** Nombres de goleadores de un campo home_scorers/away_scorers ('{"Kane 27\'",...}'). */
+function parseGoalscorers(raw: string | undefined): string[] {
+  if (!raw || raw === "null") return [];
+  return [...raw.matchAll(/"([^"]*)"/g)]
+    .map((m) => m[1])
+    .filter((it) => !/\(og\)/i.test(it)) // autogol: no se acredita al jugador
+    .map((it) => {
+      const m = it.match(/^(.+?)\s+\d/); // nombre = texto antes del minuto
+      const name = (m ? m[1] : it).replace(/\(p\)/gi, "").trim();
+      return SCORER_CANON[name] ?? name;
+    })
+    .filter(Boolean);
 }
 
 async function buildLiveData(token: string): Promise<WorldCupData> {
@@ -160,12 +205,36 @@ async function buildLiveData(token: string): Promise<WorldCupData> {
   const goals = finishedGames.reduce((sum, g) => sum + (num(g.home_score) ?? 0) + (num(g.away_score) ?? 0), 0);
   const matchesPlayed = finishedGames.length;
 
+  // Goleadores en vivo: se suman los goleadores de cada partido finalizado.
+  const scorerTally = new Map<string, Scorer>();
+  for (const g of finishedGames) {
+    const sides: [string, string | undefined][] = [
+      [g.home_scorers, idToCode[g.home_team_id]],
+      [g.away_scorers, idToCode[g.away_team_id]],
+    ];
+    for (const [raw, code] of sides) {
+      if (!code) continue;
+      for (const player of parseGoalscorers(raw)) {
+        const cur = scorerTally.get(`${player}|${code}`);
+        if (cur) cur.goals += 1;
+        else scorerTally.set(`${player}|${code}`, { player, team: code, goals: 1, assists: 0 });
+      }
+    }
+  }
+  const scorers = [...scorerTally.values()]
+    .sort((a, b) => b.goals - a.goals || a.player.localeCompare(b.player))
+    .slice(0, 12);
+
+  const highlights = buildHighlights(matches, scorers, teams);
+
   return {
-    // Editorial/estático: edición, fases, goleadores, highlights.
+    // Editorial/estático: edición, fases (goleadores y resumen ahora en vivo).
     ...WORLD_CUP,
     teams,
     matches,
     groups,
+    scorers,
+    highlights,
     stats: {
       matchesPlayed,
       goals,
@@ -175,7 +244,109 @@ async function buildLiveData(token: string): Promise<WorldCupData> {
   };
 }
 
-const cachedLive = unstable_cache((token: string) => buildLiveData(token), ["worldcup-live-v2"], {
+const ROUND_LABEL: Record<string, { es: string; en: string }> = {
+  r32: { es: "Dieciseisavos", en: "Round of 32" },
+  r16: { es: "Octavos de final", en: "Round of 16" },
+  qf: { es: "Cuartos de final", en: "Quarter-finals" },
+  sf: { es: "Semifinales", en: "Semi-finals" },
+  third: { es: "Tercer puesto", en: "Third place" },
+  final: { es: "La final", en: "The final" },
+};
+
+/*
+ * Resumen editorial derivado de los resultados en vivo. Usa nombres de equipos
+ * (limpios en la fuente) y evita apoyarse en nombres de jugadores salvo el líder
+ * de goleadores (ya normalizado). Se adapta solo a la ronda vigente.
+ */
+function buildHighlights(matches: WCMatch[], scorers: Scorer[], teams: Record<string, Team>): WCHighlight[] {
+  const nEs = (code?: string) => (code ? teams[code]?.nameEs ?? code : "");
+  const nEn = (code?: string) => (code ? teams[code]?.nameEn ?? code : "");
+  const out: WCHighlight[] = [];
+
+  // 1. Líder de la tabla de goleadores (Bota de Oro).
+  const top = scorers[0];
+  if (top) {
+    out.push({
+      titleEs: `${top.player} lidera la tabla de goleadores`,
+      titleEn: `${top.player} leads the scoring charts`,
+      bodyEs: `El goleador de ${nEs(top.team)} acumula ${top.goals} goles y encabeza la pelea por la Bota de Oro del Mundial 2026.`,
+      bodyEn: `${nEn(top.team)}'s top scorer has ${top.goals} goals and leads the race for the 2026 World Cup Golden Boot.`,
+    });
+  }
+
+  // 2. Cruces de la próxima ronda con equipos ya definidos.
+  const order: RoundId[] = ["r32", "r16", "qf", "sf", "third", "final"];
+  for (const r of order) {
+    const upcoming = matches.filter((m) => m.round === r && m.status !== "finished" && m.home && m.away);
+    if (upcoming.length) {
+      out.push({
+        titleEs: `${ROUND_LABEL[r].es}: los cruces`,
+        titleEn: `${ROUND_LABEL[r].en}: the matchups`,
+        bodyEs: `Duelos definidos: ${upcoming.map((m) => `${nEs(m.home)}–${nEs(m.away)}`).join(" · ")}.`,
+        bodyEn: `Confirmed ties: ${upcoming.map((m) => `${nEn(m.home)}–${nEn(m.away)}`).join(" · ")}.`,
+      });
+      break;
+    }
+  }
+
+  // 3. Mayor goleada de la fase eliminatoria.
+  const ko = matches.filter(
+    (m) => m.status === "finished" && m.home && m.away && m.homeScore != null && m.awayScore != null,
+  );
+  if (ko.length) {
+    const big = ko.reduce((best, m) => {
+      const d = Math.abs((m.homeScore ?? 0) - (m.awayScore ?? 0));
+      const bd = Math.abs((best.homeScore ?? 0) - (best.awayScore ?? 0));
+      const t = (m.homeScore ?? 0) + (m.awayScore ?? 0);
+      const bt = (best.homeScore ?? 0) + (best.awayScore ?? 0);
+      return d > bd || (d === bd && t > bt) ? m : best;
+    });
+    out.push({
+      titleEs: `Goleada en ${ROUND_LABEL[big.round]?.es.toLowerCase() ?? "la eliminatoria"}`,
+      titleEn: `Rout in the ${ROUND_LABEL[big.round]?.en.toLowerCase() ?? "knockouts"}`,
+      bodyEs: `${nEs(big.home)} ${big.homeScore}–${big.awayScore} ${nEs(big.away)}, el resultado más abultado de la fase eliminatoria hasta ahora.`,
+      bodyEn: `${nEn(big.home)} ${big.homeScore}–${big.awayScore} ${nEn(big.away)}, the most emphatic knockout result so far.`,
+    });
+  }
+
+  // 4. Situación de los tres anfitriones (México, EE. UU., Canadá).
+  const alive = new Set<string>();
+  for (const m of matches) {
+    if (m.status !== "finished") {
+      if (m.home) alive.add(m.home);
+      if (m.away) alive.add(m.away);
+    }
+  }
+  const hostsAlive = (["MEX", "USA", "CAN"] as const).filter((h) => alive.has(h));
+  if (hostsAlive.length === 0) {
+    out.push({
+      titleEs: "Los tres anfitriones, eliminados",
+      titleEn: "All three hosts are out",
+      bodyEs: "México, Estados Unidos y Canadá quedaron fuera de su propio Mundial antes de los cuartos de final.",
+      bodyEn: "Mexico, the United States and Canada exited their home World Cup before the quarter-finals.",
+    });
+  } else if (hostsAlive.length === 3) {
+    out.push({
+      titleEs: "Los tres anfitriones siguen vivos",
+      titleEn: "All three hosts are still alive",
+      bodyEs: "México, Estados Unidos y Canadá avanzaron y mantienen viva la ilusión local en el Mundial 2026.",
+      bodyEn: "Mexico, the United States and Canada advanced and keep the home dream alive at the 2026 World Cup.",
+    });
+  } else {
+    const es = hostsAlive.map(nEs).join(" y ");
+    const en = hostsAlive.map(nEn).join(" and ");
+    out.push({
+      titleEs: `Anfitriones en carrera: ${es}`,
+      titleEn: `Hosts still standing: ${en}`,
+      bodyEs: `${es} mantiene(n) viva la bandera local en el Mundial 2026.`,
+      bodyEn: `${en} keep the host nations' hopes alive at the 2026 World Cup.`,
+    });
+  }
+
+  return out;
+}
+
+const cachedLive = unstable_cache((token: string) => buildLiveData(token), ["worldcup-live-v3"], {
   revalidate: 600,
 });
 

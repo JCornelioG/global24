@@ -40,7 +40,7 @@ export default function ScorersTable({ lang, data }: { lang: Locale; data: World
               <td className="px-2 py-3 text-center font-display text-base font-bold tabular-nums text-gold">
                 {scorer.goals}
               </td>
-              <td className="px-4 py-3 text-center tabular-nums text-muted">{scorer.assists}</td>
+              <td className="px-4 py-3 text-center tabular-nums text-muted">{scorer.assists || "—"}</td>
             </tr>
           ))}
         </tbody>
