@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -52,6 +53,7 @@ export default async function ArticlePage({ params }: Params) {
   const article = await findArticle(lang, id);
   if (!article) notFound();
 
+  const adLabel = lang === "es" ? "Publicidad" : "Advertisement";
   const related = await relatedArticles(lang, article, 6);
   const brief = await getArticleBrief(article, lang);
 
@@ -121,9 +123,17 @@ export default async function ArticlePage({ params }: Params) {
           </h2>
           <div className="flex flex-col gap-4">
             {paragraphs.map((paragraph, i) => (
-              <p key={i} className="text-[15px] leading-relaxed text-ink/90">
-                {paragraph}
-              </p>
+              <Fragment key={i}>
+                <p className="text-[15px] leading-relaxed text-ink/90">{paragraph}</p>
+                {/* Anuncio in-article tras el 2º párrafo (solo si la síntesis es larga). */}
+                {i === 1 && paragraphs.length > 3 && (
+                  <AdSlot
+                    slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE_MID}
+                    label={adLabel}
+                    className="my-2"
+                  />
+                )}
+              </Fragment>
             ))}
           </div>
           <p className="mt-4 text-[11px] italic text-faint">
@@ -156,7 +166,7 @@ export default async function ArticlePage({ params }: Params) {
       </article>
 
       <div className="mx-auto mt-10 max-w-3xl">
-        <AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE} />
+        <AdSlot slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE} label={adLabel} />
       </div>
 
       {related.length > 0 && (

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import AdSlot from "@/components/AdSlot";
 import HeadlineList from "@/components/HeadlineList";
 import NewsCard from "@/components/NewsCard";
 import SectionHeading from "@/components/SectionHeading";
@@ -115,6 +116,11 @@ export default async function CategoryPage({
               ))}
             </section>
           )}
+
+          <AdSlot
+            slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_FEED}
+            label={lang === "es" ? "Publicidad" : "Advertisement"}
+          />
 
           {rest.length > 0 && (
             <section className="flex flex-col gap-4">

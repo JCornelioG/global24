@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/AdSlot";
 import HeadlineList from "@/components/HeadlineList";
 import NewsCard from "@/components/NewsCard";
 import NewsletterBox from "@/components/NewsletterBox";
@@ -112,6 +113,11 @@ export default async function HomePage({
             />
           );
         })}
+
+        <AdSlot
+          slot={process.env.NEXT_PUBLIC_ADSENSE_SLOT_FEED}
+          label={lang === "es" ? "Publicidad" : "Advertisement"}
+        />
 
         <div className="grid gap-10 sm:gap-14 xl:grid-cols-2 xl:gap-x-8">
           {SPLIT_SECTIONS.map((slug) => {
