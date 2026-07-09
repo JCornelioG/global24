@@ -56,6 +56,10 @@ export async function generateMetadata({
         ? { "msvalidate.01": process.env.BING_SITE_VERIFICATION }
         : {},
     },
+    // Meta de verificación de AdSense: server-rendered en el <head>, así el
+    // rastreador de AdSense la ve sin ejecutar JS (el <Script> afterInteractive
+    // se inyecta por cliente y no sirve para verificar la propiedad).
+    ...(ADSENSE_CLIENT ? { other: { "google-adsense-account": ADSENSE_CLIENT } } : {}),
   };
 }
 
