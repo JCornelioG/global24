@@ -282,7 +282,10 @@ export async function getArticleBrief(article: Article, lang: Locale): Promise<A
   try {
     return await cachedBrief(lang, article);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "";
+    const message = error instanceof Error ? error.message : String(error);
+    // Log server-side (Vercel) para poder depurar: key inválida, modelo dado de
+    // baja, rate limit, etc. Nunca se expone al cliente.
+    console.warn(`[summary] generación de síntesis falló: ${message}`);
     // 401/403 = credenciales inválidas: dejar de reintentar hasta el próximo deploy.
     if (error instanceof Anthropic.AuthenticationError || /\b(401|403)\b|apiKey/.test(message)) {
       aiUnavailable = true;
