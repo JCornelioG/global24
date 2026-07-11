@@ -10,7 +10,8 @@ import SmartImage from "@/components/SmartImage";
 import { categoryLabel } from "@/lib/categories";
 import { formatDateLong, timeAgo } from "@/lib/format";
 import { getDict, t } from "@/lib/i18n";
-import { findArticle, relatedArticles } from "@/lib/news";
+import { isTopClicked } from "@/lib/gsc";
+import { findArticle, isFeaturedArticle, relatedArticles } from "@/lib/news";
 import { asLocale, localePath, SITE_NAME, SITE_URL } from "@/lib/site";
 import { getArticleBrief } from "@/lib/summary";
 import type { Locale } from "@/lib/types";
@@ -55,7 +56,16 @@ export default async function ArticlePage({ params }: Params) {
 
   const adLabel = lang === "es" ? "Publicidad" : "Advertisement";
   const related = await relatedArticles(lang, article, 6);
-  const brief = await getArticleBrief(article, lang);
+  // Síntesis con IA solo para las notas con tracción: destacadas (portada y
+  // tarjetas de categoría, cubre lo nuevo al instante) o con clics reales en
+  // Google según Search Console (cubre la cola larga con tráfico; dato con
+  // ~1-2 días de retraso). El resto usa el resumen contextual.
+  // SUMMARY_SCOPE=all habilita la IA para todas.
+  const wantAI =
+    process.env.SUMMARY_SCOPE === "all" ||
+    (await isFeaturedArticle(lang, article)) ||
+    (await isTopClicked(article.id));
+  const brief = wantAI ? await getArticleBrief(article, lang) : null;
 
   // La og:image del artículo (alta resolución) es mejor que la miniatura del feed.
   const heroImage = brief?.image ?? article.image;

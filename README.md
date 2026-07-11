@@ -52,6 +52,8 @@ Sin proveedor configurado la caja de suscripción muestra éxito pero no almacen
 | `SUMMARY_API_KEY` + `SUMMARY_BASE_URL` | Endpoint OpenAI-compatible genérico (OpenRouter, Together…) | — |
 | `SUMMARY_MODEL` | Sobreescribe el modelo del proveedor | según proveedor |
 | `SUMMARY_AI` | `0` desactiva la síntesis con IA | activado |
+| `SUMMARY_SCOPE` | `all` genera síntesis con IA para todas las notas; por defecto solo las con tracción (destacadas + clics en Google) | tracción |
+| `GSC_CLIENT_EMAIL` / `GSC_PRIVATE_KEY` / `GSC_PROPERTY` | Service account de Search Console: notas con clics reales en Google también generan síntesis | — (solo destacadas) |
 | `GOOGLE_SITE_VERIFICATION` / `BING_SITE_VERIFICATION` | Verificación de propiedad en Search Console / Bing (meta tag) | — |
 | `NEXT_PUBLIC_ADSENSE_CLIENT` | ID de editor AdSense (`ca-pub-…`): carga el script, la meta de verificación y genera `/ads.txt` | — (sin anuncios) |
 | `NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE` | Bloque al pie del artículo (post-aprobación) | — |
@@ -61,7 +63,7 @@ Sin proveedor configurado la caja de suscripción muestra éxito pero no almacen
 
 **Centro del Mundial**: con `WORLDCUP_API_TOKEN` definido, resultados, cruces y grupos se traen en vivo de [worldcup26.ir](https://worldcup26.ir) (API gratuita, token ~84 días) y se cachean 30 min; las banderas son imágenes de flagcdn. Sin token, o si la API falla, cae automáticamente al bracket estático de [data/worldcup.ts](data/worldcup.ts) (goleadores y highlights son editoriales, siempre de ese archivo).
 
-**Síntesis con IA**: elegí un proveedor. Sin ninguna key configurada, las páginas de artículo usan un resumen contextual automático (costo cero). Las síntesis se cachean 24 h por artículo e idioma, así el costo por noticia es una sola llamada corta (~500 tokens).
+**Síntesis con IA**: elegí un proveedor. Sin ninguna key configurada, las páginas de artículo usan un resumen contextual automático (costo cero). Las síntesis se cachean 24 h por artículo e idioma y, por defecto, **solo se generan para las notas con tracción**: destacadas (portada + tarjetas con imagen de cada categoría, cubre lo nuevo al instante) o con clics reales en Google según la API de Search Console (cubre la cola larga con tráfico; requiere `GSC_CLIENT_EMAIL`/`GSC_PRIVATE_KEY`). El resto —visitado sobre todo por crawlers— usa el resumen contextual. `SUMMARY_SCOPE=all` habilita la IA para todas.
 
 - **Groq** (recomendado para empezar): `SUMMARY_PROVIDER=groq` + `GROQ_API_KEY`. Tier gratis con Llama, sin tarjeta; modelo por defecto `llama-3.3-70b-versatile`.
 - **DeepSeek**: `SUMMARY_PROVIDER=deepseek` + `DEEPSEEK_API_KEY` (≈ US$1,10 por 1M tokens de salida).

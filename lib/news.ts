@@ -173,6 +173,29 @@ export async function getTopNews(lang: Locale, limit = 40): Promise<Article[]> {
   }
 }
 
+/**
+ * ¿Es un artículo destacado? Destacado = aparece en la franja alta de la
+ * portada o entre las tarjetas con imagen de su categoría — las posiciones que
+ * concentran los clics reales. Se usa para gastar la síntesis con IA solo en
+ * las notas con tracción; la cola larga (visitada sobre todo por crawlers)
+ * usa el resumen contextual sin IA. Los pools ya están cacheados: costo ~0.
+ */
+export async function isFeaturedArticle(lang: Locale, article: Article): Promise<boolean> {
+  const [top, cat] = await Promise.allSettled([
+    topNews(lang),
+    categoryNews(lang, article.category),
+  ]);
+  // Franja alta de la portada (hero + destacadas + "En breve").
+  if (top.status === "fulfilled" && top.value.slice(0, 12).some((a) => a.id === article.id)) {
+    return true;
+  }
+  // Tarjetas con imagen de su categoría (mismo criterio que la página de categoría).
+  if (cat.status === "fulfilled") {
+    return cat.value.filter((a) => a.image).slice(0, 9).some((a) => a.id === article.id);
+  }
+  return false;
+}
+
 /** Busca un artículo por id en todos los pools cacheados (portada + categorías). */
 export async function findArticle(lang: Locale, id: string): Promise<Article | null> {
   const pools = await Promise.allSettled([
