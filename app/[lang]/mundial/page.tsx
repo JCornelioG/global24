@@ -6,8 +6,8 @@ import { LOCALES, type Locale } from "@/lib/types";
 import { getWorldCupData } from "@/lib/worldcupApi";
 import { currentPhase, liveMatches, todayMatches } from "@/lib/worldcup";
 
-// 10 min: la síntesis en vivo del Mundial se cachea igual de seguido.
-export const revalidate = 600;
+// 15 min: frescura de datos del Mundial sin gastar CPU de más en reparsear.
+export const revalidate = 900;
 
 export function generateStaticParams() {
   return LOCALES.map((lang) => ({ lang }));

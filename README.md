@@ -8,7 +8,7 @@ Portal de noticias bilingüe (**español** por defecto, **inglés** con un clic)
   - **Google News RSS** (titulares curados por categoría e idioma).
   - **Feeds RSS de medios** con imágenes de calidad (BBC, The Guardian, NYT, El País, Marca, etc.).
   - **GDELT Project** como enriquecimiento opcional de imágenes (respetando su rate-limit; se desactiva con `GDELT_ENABLED=0`).
-- **Actualización periódica automática** vía ISR: noticias cada 10 min, mercados cada 5 min (sin redeploys).
+- **Actualización periódica automática** vía ISR: noticias cada 30 min, Mundial cada 15 min, mercados cada 5 min (sin redeploys). Intervalos elegidos para equilibrar frescura y consumo de cómputo (Vercel Fluid Active CPU).
 - **Ticker financiero** (EUR/USD, Bitcoin, Oro, S&P 500, NASDAQ, DAX, NIKKEI, FTSE 100) con datos de Yahoo Finance y refresco en vivo cada 2 min en el cliente.
 - **Centro del Mundial 2026**: cuadro de eliminatorias interactivo, resumen, goleadores, calendario y grupos. Datos editables en [`data/worldcup.ts`](data/worldcup.ts) (estructura lista para conectar una API en el futuro).
 - **Páginas de artículo propias** (`/es/a/[id]`): síntesis original de cada noticia (generada con la API de Claude si hay `ANTHROPIC_API_KEY`; sin ella, resumen contextual automático), extracto breve atribuido, cobertura relacionada de otras fuentes, botones de compartir y CTA "leer en la fuente". El clic en cualquier tarjeta queda dentro del sitio.
@@ -59,7 +59,7 @@ Sin proveedor configurado la caja de suscripción muestra éxito pero no almacen
 | `NEXT_PUBLIC_ADSENSE_SLOT_FEED` | Bloque in-feed en home y categorías | — |
 | `WORLDCUP_API_TOKEN` | Token JWT de worldcup26.ir para datos en vivo del Mundial | — (usa bracket estático) |
 
-**Centro del Mundial**: con `WORLDCUP_API_TOKEN` definido, resultados, cruces y grupos se traen en vivo de [worldcup26.ir](https://worldcup26.ir) (API gratuita, token ~84 días) y se cachean 10 min; las banderas son imágenes de flagcdn. Sin token, o si la API falla, cae automáticamente al bracket estático de [data/worldcup.ts](data/worldcup.ts) (goleadores y highlights son editoriales, siempre de ese archivo).
+**Centro del Mundial**: con `WORLDCUP_API_TOKEN` definido, resultados, cruces y grupos se traen en vivo de [worldcup26.ir](https://worldcup26.ir) (API gratuita, token ~84 días) y se cachean 15 min; las banderas son imágenes de flagcdn. Sin token, o si la API falla, cae automáticamente al bracket estático de [data/worldcup.ts](data/worldcup.ts) (goleadores y highlights son editoriales, siempre de ese archivo).
 
 **Síntesis con IA**: elegí un proveedor. Sin ninguna key configurada, las páginas de artículo usan un resumen contextual automático (costo cero). Las síntesis se cachean 24 h por artículo e idioma, así el costo por noticia es una sola llamada corta (~500 tokens).
 
