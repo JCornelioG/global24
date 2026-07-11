@@ -143,10 +143,10 @@ async function buildTopNews(lang: Locale): Promise<Article[]> {
   return result;
 }
 
-// 30 min: intervalo de refresco de noticias. Suficiente frescura para un
-// agregador y ~3× menos cómputo (Active CPU) que 10 min al reparsear feeds.
-const cachedCategory = unstable_cache(buildCategoryNews, ["news-category"], { revalidate: 1800 });
-const cachedTop = unstable_cache(buildTopNews, ["news-top"], { revalidate: 1800 });
+// 60 min: intervalo de refresco de noticias. Frescura razonable para un
+// agregador y ~6× menos cómputo (Active CPU) que 10 min al reparsear feeds.
+const cachedCategory = unstable_cache(buildCategoryNews, ["news-category"], { revalidate: 3600 });
+const cachedTop = unstable_cache(buildTopNews, ["news-top"], { revalidate: 3600 });
 
 /* React cache() deduplica llamadas dentro de un mismo render. */
 const categoryNews = cache((lang: Locale, category: CategorySlug) => cachedCategory(lang, category));

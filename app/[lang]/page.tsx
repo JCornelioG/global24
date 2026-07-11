@@ -13,7 +13,7 @@ import { getHomeSections, getTopNews } from "@/lib/news";
 import { localePath } from "@/lib/site";
 import { LOCALES, type Article, type CategorySlug, type Locale } from "@/lib/types";
 
-export const revalidate = 1800;
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return LOCALES.map((lang) => ({ lang }));

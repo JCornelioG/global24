@@ -11,7 +11,7 @@ import { getNewsByCategory } from "@/lib/news";
 import { localePath, SITE_URL } from "@/lib/site";
 import { CATEGORY_SLUGS, LOCALES, type Article, type CategorySlug, type Locale } from "@/lib/types";
 
-export const revalidate = 1800;
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return LOCALES.flatMap((lang) => CATEGORY_SLUGS.map((slug) => ({ lang, slug })));

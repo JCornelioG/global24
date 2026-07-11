@@ -15,7 +15,7 @@ import { asLocale, localePath, SITE_NAME, SITE_URL } from "@/lib/site";
 import { getArticleBrief } from "@/lib/summary";
 import type { Locale } from "@/lib/types";
 
-export const revalidate = 1800;
+export const revalidate = 3600;
 
 interface Params {
   params: Promise<{ lang: string; id: string }>;

@@ -53,7 +53,7 @@ async function apiGet<T>(path: string, token: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(8000),
-    next: { revalidate: 900 },
+    next: { revalidate: 1800 },
   });
   if (!res.ok) throw new Error(`${path} ${res.status}`);
   return (await res.json()) as T;
@@ -347,7 +347,7 @@ function buildHighlights(matches: WCMatch[], scorers: Scorer[], teams: Record<st
 }
 
 const cachedLive = unstable_cache((token: string) => buildLiveData(token), ["worldcup-live-v3"], {
-  revalidate: 900,
+  revalidate: 1800,
 });
 
 export async function fetchLiveWorldCup(): Promise<WorldCupData | null> {
