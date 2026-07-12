@@ -70,6 +70,37 @@ function num(v: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+const ROUND_ORDER: Record<RoundId, number> = { r32: 0, r16: 1, qf: 2, sf: 3, third: 4, final: 5 };
+
+/*
+ * Orden de visualización del cuadro por id de partido FIFA (Mundial 2026).
+ * El fixture oficial cruza llaves de forma no contigua (p. ej. el cuarto 98
+ * se alimenta de los octavos 93 y 94, y la semifinal 101 de los cuartos 97 y
+ * 98), así que ordenar por id no alinea las llaves. Cada mitad de esta lista
+ * es la rama completa de una semifinal, con cada partido junto a los que lo
+ * alimentan. Derivado de los resultados reales (ganador → partido de origen).
+ */
+const BRACKET_DISPLAY_ORDER = [
+  // Rama izquierda (semifinal 101)
+  74, 77, 73, 75, 83, 84, 81, 82, // dieciseisavos
+  89, 90, 93, 94, // octavos
+  97, 98, // cuartos
+  101, // semifinal
+  // Rama derecha (semifinal 102)
+  76, 78, 79, 80, 86, 88, 85, 87, // dieciseisavos
+  91, 92, 95, 96, // octavos
+  99, 100, // cuartos
+  102, // semifinal
+  // Centro
+  103, 104, // tercer puesto y final
+];
+const BRACKET_DISPLAY_RANK = new Map(BRACKET_DISPLAY_ORDER.map((id, i) => [`g${id}`, i]));
+
+/** Posición del partido en el cuadro; ids desconocidos quedan al final, por id. */
+function displayRank(m: WCMatch): number {
+  return BRACKET_DISPLAY_RANK.get(m.id) ?? 1000 + Number(m.id.slice(1));
+}
+
 /*
  * Los goleadores que devuelve la API vienen a veces mal transliterados
  * (p. ej. "Hri Kin" = Harry Kane) y hasta partidos en varias grafías, lo que
@@ -169,15 +200,13 @@ async function buildLiveData(token: string): Promise<WorldCupData> {
       };
     });
 
-  // La numeración FIFA alterna mitades en cuartos (id 97,99 = izquierda;
-  // 98,100 = derecha). El cuadro divide izquierda/derecha por orden, así que se
-  // reordenan a [izq-arriba, izq-abajo, der-arriba, der-abajo] para que cada
-  // cuarto quede junto a los octavos que lo alimentan.
-  const qfStart = matches.findIndex((m) => m.round === "qf");
-  if (qfStart >= 0 && matches[qfStart + 3]?.round === "qf") {
-    const [a, b, c, d] = matches.slice(qfStart, qfStart + 4);
-    matches.splice(qfStart, 4, a, c, b, d);
-  }
+  // El cuadro (Bracket.tsx) parte cada ronda por la mitad: primera mitad a la
+  // izquierda, segunda a la derecha. Se ordena cada ronda según la estructura
+  // real de llaves para que cada partido quede del lado y a la altura de la
+  // llave que alimenta (ver BRACKET_DISPLAY_RANK).
+  matches.sort(
+    (a, b) => ROUND_ORDER[a.round] - ROUND_ORDER[b.round] || displayRank(a) - displayRank(b),
+  );
 
   const groups: WCGroup[] = groupsRes.groups
     .map((gr): WCGroup => ({
@@ -346,7 +375,7 @@ function buildHighlights(matches: WCMatch[], scorers: Scorer[], teams: Record<st
   return out;
 }
 
-const cachedLive = unstable_cache((token: string) => buildLiveData(token), ["worldcup-live-v3"], {
+const cachedLive = unstable_cache((token: string) => buildLiveData(token), ["worldcup-live-v4"], {
   revalidate: 1800,
 });
 
