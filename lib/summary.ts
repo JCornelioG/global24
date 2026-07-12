@@ -52,7 +52,10 @@ function resolveProvider(): ProviderConfig | null {
         kind: "openai",
         apiKey,
         baseUrl: "https://api.groq.com/openai/v1",
-        model: process.env.SUMMARY_MODEL ?? "llama-3.3-70b-versatile",
+        // Llama 4 Scout: en el tier gratis de Groq tiene ~5× más presupuesto
+        // diario que llama-3.3-70b (cuyos 100k tokens/día se agotaban y las
+        // síntesis desaparecían), con muy buena calidad de resumen.
+        model: process.env.SUMMARY_MODEL ?? "meta-llama/llama-4-scout-17b-16e-instruct",
       };
     }
     case "deepseek": {

@@ -65,7 +65,7 @@ Sin proveedor configurado la caja de suscripción muestra éxito pero no almacen
 
 **Síntesis con IA**: elegí un proveedor. Sin ninguna key configurada, las páginas de artículo usan un resumen contextual automático (costo cero). Las síntesis se cachean 24 h por artículo e idioma y, por defecto, **solo se generan para las notas con tracción**: destacadas (portada + tarjetas con imagen de cada categoría, cubre lo nuevo al instante) o con clics reales en Google según la API de Search Console (cubre la cola larga con tráfico; requiere `GSC_CLIENT_EMAIL`/`GSC_PRIVATE_KEY`). El resto —visitado sobre todo por crawlers— usa el resumen contextual. `SUMMARY_SCOPE=all` habilita la IA para todas.
 
-- **Groq** (recomendado para empezar): `SUMMARY_PROVIDER=groq` + `GROQ_API_KEY`. Tier gratis con Llama, sin tarjeta; modelo por defecto `llama-3.3-70b-versatile`.
+- **Groq** (recomendado para empezar): `SUMMARY_PROVIDER=groq` + `GROQ_API_KEY`. Tier gratis con Llama, sin tarjeta; modelo por defecto `meta-llama/llama-4-scout-17b-16e-instruct` (~5× más presupuesto diario gratis que el 70B, cuyo límite de 100k tokens/día se quedaba corto).
 - **DeepSeek**: `SUMMARY_PROVIDER=deepseek` + `DEEPSEEK_API_KEY` (≈ US$1,10 por 1M tokens de salida).
 - **Claude**: `SUMMARY_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` (Haiku US$5 · Opus US$25 por 1M).
 
