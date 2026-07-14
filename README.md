@@ -60,6 +60,7 @@ Sin proveedor configurado la caja de suscripción muestra éxito pero no almacen
 | `NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE_MID` | Bloque dentro del artículo, tras el 2º párrafo | — |
 | `NEXT_PUBLIC_ADSENSE_SLOT_FEED` | Bloque in-feed en home y categorías | — |
 | `WORLDCUP_API_TOKEN` | Token JWT de worldcup26.ir para datos en vivo del Mundial | — (usa bracket estático) |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Archivo permanente de artículos (Upstash Redis): las URLs siguen vivas al rotar del feed | — (404 al rotar) |
 
 **Centro del Mundial**: con `WORLDCUP_API_TOKEN` definido, resultados, cruces y grupos se traen en vivo de [worldcup26.ir](https://worldcup26.ir) (API gratuita, token ~84 días) y se cachean 30 min; las banderas son imágenes de flagcdn. Sin token, o si la API falla, cae automáticamente al bracket estático de [data/worldcup.ts](data/worldcup.ts) (goleadores y highlights son editoriales, siempre de ese archivo).
 

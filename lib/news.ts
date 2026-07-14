@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
+import { archiveArticles, getArchivedArticle } from "./archive";
 import { CATEGORIES, googleNewsCategoryFeed, googleNewsHomeFeed } from "./categories";
 import { normalizeTitle, stableId, stripHtml } from "./format";
 import { fetchGdelt } from "./gdelt";
@@ -112,6 +113,8 @@ async function buildCategoryNews(lang: Locale, category: CategorySlug): Promise<
   // Un resultado vacío (fallo total de fuentes) se lanza para NO cachearlo
   // 10 minutos: el caller degrada a [] y el próximo render reintenta.
   if (result.length === 0) throw new Error("sin fuentes disponibles");
+  // Archivo permanente: las URLs de artículo siguen vivas tras rotar del feed.
+  await archiveArticles(lang, result);
   return result;
 }
 
@@ -140,6 +143,7 @@ async function buildTopNews(lang: Locale): Promise<Article[]> {
   const seen = new Set(topImaged.map((a) => normalizeTitle(a.title)));
   const result = [...topImaged, ...dedupe(headlines, seen)].slice(0, 40);
   if (result.length === 0) throw new Error("sin fuentes disponibles");
+  await archiveArticles(lang, result);
   return result;
 }
 
@@ -196,7 +200,11 @@ export async function isFeaturedArticle(lang: Locale, article: Article): Promise
   return false;
 }
 
-/** Busca un artículo por id en todos los pools cacheados (portada + categorías). */
+/**
+ * Busca un artículo por id en los pools cacheados (portada + categorías) y,
+ * si ya rotó de los feeds, en el archivo permanente — así las URLs indexadas
+ * por Google siguen vivas en vez de devolver 404.
+ */
 export async function findArticle(lang: Locale, id: string): Promise<Article | null> {
   const pools = await Promise.allSettled([
     topNews(lang),
@@ -207,7 +215,7 @@ export async function findArticle(lang: Locale, id: string): Promise<Article | n
     const hit = pool.value.find((a) => a.id === id);
     if (hit) return hit;
   }
-  return null;
+  return getArchivedArticle(lang, id);
 }
 
 const STOPWORDS = new Set([
