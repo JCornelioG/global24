@@ -45,10 +45,14 @@ interface GdeltRawArticle {
 
 /**
  * Consulta GDELT DOC 2.0 (ArtList). Devuelve [] ante rate-limit (la API
- * responde texto plano, no JSON), error de red o GDELT_ENABLED=0.
+ * responde texto plano, no JSON), error de red o si no está habilitado.
+ *
+ * Apagado por defecto: es solo enriquecimiento de imágenes (los feeds de
+ * medios ya traen imágenes buenas) y su fetch+parse por categoría consumía
+ * Fluid Active CPU del plan gratis de Vercel. GDELT_ENABLED=1 lo reactiva.
  */
 export async function fetchGdelt(query: string, lang: "es" | "en", max = 20): Promise<GdeltArticle[]> {
-  if (process.env.GDELT_ENABLED === "0") return [];
+  if (process.env.GDELT_ENABLED !== "1") return [];
   try {
     await throttle();
     const sourcelang = lang === "es" ? "spa" : "eng";

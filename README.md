@@ -7,7 +7,7 @@ Portal de noticias bilingüe (**español** por defecto, **inglés** con un clic)
 - **Noticias en tiempo real** agregadas de fuentes públicas:
   - **Google News RSS** (titulares curados por categoría e idioma).
   - **Feeds RSS de medios** con imágenes de calidad (BBC, The Guardian, NYT, El País, Marca, etc.).
-  - **GDELT Project** como enriquecimiento opcional de imágenes (respetando su rate-limit; se desactiva con `GDELT_ENABLED=0`).
+  - **GDELT Project** como enriquecimiento opcional de imágenes (apagado por defecto para ahorrar cómputo; se activa con `GDELT_ENABLED=1`).
 - **Actualización periódica automática** vía ISR: noticias cada 60 min, Mundial cada 30 min, mercados cada 5 min (sin redeploys). Intervalos elegidos para equilibrar frescura y consumo de cómputo (Vercel Fluid Active CPU).
 - **Ticker financiero** (EUR/USD, Bitcoin, Oro, S&P 500, NASDAQ, DAX, NIKKEI, FTSE 100) con datos de Yahoo Finance y refresco en vivo cada 2 min en el cliente.
 - **Centro del Mundial 2026**: cuadro de eliminatorias interactivo, resumen, goleadores, calendario y grupos. Datos editables en [`data/worldcup.ts`](data/worldcup.ts) (estructura lista para conectar una API en el futuro).
@@ -34,7 +34,7 @@ Variables de entorno:
 | Variable | Descripción | Default |
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | URL pública del sitio (canonical/sitemap/OG) | `http://localhost:3000` |
-| `GDELT_ENABLED` | `0` desactiva el enriquecimiento GDELT | activado |
+| `GDELT_ENABLED` | `1` activa el enriquecimiento GDELT | desactivado |
 | `NEXT_PUBLIC_CONTACT_EMAIL` | Email mostrado en /contacto y páginas legales | `contacto@example.com` |
 | `NEWSLETTER_PROVIDER` | Proveedor del boletín: `buttondown`, `mailchimp`, `resend` o `webhook` | — (caja visual sin guardar) |
 

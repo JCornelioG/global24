@@ -16,7 +16,10 @@ import { asLocale, localePath, SITE_NAME, SITE_URL } from "@/lib/site";
 import { getArticleBrief } from "@/lib/summary";
 import type { Locale } from "@/lib/types";
 
-export const revalidate = 3600;
+// 6 h: una nota ya renderizada casi no cambia (solo "relacionadas" y el
+// reintento de síntesis). Los bots recorren cientos de URLs de artículo y
+// re-renderizarlas cada hora era el mayor consumo de Fluid Active CPU.
+export const revalidate = 21600;
 
 interface Params {
   params: Promise<{ lang: string; id: string }>;
