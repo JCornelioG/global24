@@ -38,6 +38,10 @@ function asArray<T>(value: T | T[] | undefined): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 interface MediaNode {
   "@_url"?: string;
   "@_width"?: string;
@@ -92,9 +96,11 @@ export async function fetchRss(url: string, revalidate = 600, maxItems = 25): Pr
     });
     if (!res.ok) return [];
     const xml = await res.text();
-    const doc = parser.parse(xml) as Record<string, any>;
-    const channel = doc?.rss?.channel ?? doc?.feed;
-    if (!channel) return [];
+    const parsed: unknown = parser.parse(xml);
+    if (!isRecord(parsed)) return [];
+    const rss = isRecord(parsed.rss) ? parsed.rss : undefined;
+    const channel = rss?.channel ?? parsed.feed;
+    if (!isRecord(channel)) return [];
     const channelTitle = text(channel.title);
 
     // RSS 2.0 usa channel.item; Atom usa feed.entry (con published/updated y summary).
