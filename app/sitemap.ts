@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getNewsByCategory, getTopNews } from "@/lib/news";
+import { getIndexableSitemapArticles } from "@/lib/indexing";
 import { SITE_URL } from "@/lib/site";
 import { CATEGORY_SLUGS, LOCALES } from "@/lib/types";
 
@@ -43,31 +43,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
   });
 
-  // Notas vigentes de todos los pools: las páginas de artículo generan casi
-  // todas las impresiones y vía sitemap Google las descubre e indexa mucho
-  // más rápido que rastreando enlaces internos. Al rotar del feed salen del
-  // sitemap pero siguen vivas (archivo permanente), así que lo indexado queda.
-  const articles: MetadataRoute.Sitemap = [];
-  for (const lang of LOCALES) {
-    const pools = await Promise.allSettled([
-      getTopNews(lang),
-      ...CATEGORY_SLUGS.map((slug) => getNewsByCategory(lang, slug)),
-    ]);
-    const seen = new Set<string>();
-    for (const pool of pools) {
-      if (pool.status !== "fulfilled") continue;
-      for (const article of pool.value) {
-        if (seen.has(article.id)) continue;
-        seen.add(article.id);
-        articles.push({
-          url: `${SITE_URL}/${lang}/a/${article.id}`,
-          lastModified: new Date(article.publishedAt),
-          changeFrequency: "daily",
-          priority: 0.7,
-        });
-      }
-    }
-  }
+  // Recuperación SEO: pocas notas en español, destacadas y confirmadas en el
+  // archivo permanente. Si Redis falla, ninguna URL efímera entra al sitemap.
+  const indexable = await getIndexableSitemapArticles();
+  const articles: MetadataRoute.Sitemap = indexable.map((article) => ({
+    url: `${SITE_URL}/es/a/${article.id}`,
+    lastModified: new Date(article.publishedAt),
+    changeFrequency: "daily",
+    priority: 0.7,
+  }));
 
   return [...statics, ...articles];
 }

@@ -11,7 +11,7 @@ Portal de noticias bilingüe (**español** por defecto, **inglés** con un clic)
 - **Actualización periódica automática** vía ISR: noticias cada 60 min, Mundial cada 30 min, mercados cada 5 min (sin redeploys). Intervalos elegidos para equilibrar frescura y consumo de cómputo (Vercel Fluid Active CPU).
 - **Ticker financiero** (EUR/USD, Bitcoin, Oro, S&P 500, NASDAQ, DAX, NIKKEI, FTSE 100) con datos de Yahoo Finance y refresco en vivo cada 2 min en el cliente.
 - **Centro del Mundial 2026**: cuadro de eliminatorias interactivo, resumen, goleadores, calendario y grupos. Datos editables en [`data/worldcup.ts`](data/worldcup.ts) (estructura lista para conectar una API en el futuro).
-- **Páginas de artículo propias** (`/es/a/[id]`): síntesis original de cada noticia (generada con la API de Claude si hay `ANTHROPIC_API_KEY`; sin ella, resumen contextual automático), extracto breve atribuido, cobertura relacionada de otras fuentes, botones de compartir y CTA "leer en la fuente". El clic en cualquier tarjeta queda dentro del sitio.
+- **Páginas de artículo propias** (`/es/a/[id]`): síntesis original de cada noticia, extracto breve atribuido, cobertura relacionada de otras fuentes, botones de compartir y CTA "leer en la fuente". Durante la recuperación SEO solo se indexan notas destacadas en español que estén archivadas y tengan una síntesis larga; el resto sigue navegable con `noindex, follow`.
 - **Bilingüe con SEO correcto**: rutas `/es/...` y `/en/...`, `hreflang`, canonical, sitemap, robots, manifest, Open Graph, JSON-LD (NewsMediaOrganization, WebSite, ItemList, SportsEvent, NewsArticle).
 - **Responsive** total: menú móvil, ticker en marquesina, bracket con scroll horizontal.
 
@@ -60,11 +60,11 @@ Sin proveedor configurado la caja de suscripción muestra éxito pero no almacen
 | `NEXT_PUBLIC_ADSENSE_SLOT_ARTICLE_MID` | Bloque dentro del artículo, tras el 2º párrafo | — |
 | `NEXT_PUBLIC_ADSENSE_SLOT_FEED` | Bloque in-feed en home y categorías | — |
 | `WORLDCUP_API_TOKEN` | Token JWT de worldcup26.ir para datos en vivo del Mundial | — (usa bracket estático) |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Archivo permanente de artículos (Upstash Redis): las URLs siguen vivas al rotar del feed | — (404 al rotar) |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Archivo permanente de artículos (Upstash Redis): obligatorio para que una nota sea indexable | — (artículos en `noindex`) |
 
 **Centro del Mundial**: con `WORLDCUP_API_TOKEN` definido, resultados, cruces y grupos se traen en vivo de [worldcup26.ir](https://worldcup26.ir) (API gratuita, token ~84 días) y se cachean 30 min; las banderas son imágenes de flagcdn. Sin token, o si la API falla, cae automáticamente al bracket estático de [data/worldcup.ts](data/worldcup.ts) (goleadores y highlights son editoriales, siempre de ese archivo).
 
-**Síntesis con IA**: elegí un proveedor. Sin ninguna key configurada, las páginas de artículo usan un resumen contextual automático (costo cero). Las síntesis se cachean 24 h por artículo e idioma y, por defecto, **solo se generan para las notas con tracción**: destacadas (portada + tarjetas con imagen de cada categoría, cubre lo nuevo al instante) o con clics reales en Google según la API de Search Console (cubre la cola larga con tráfico; requiere `GSC_CLIENT_EMAIL`/`GSC_PRIVATE_KEY`). El resto —visitado sobre todo por crawlers— usa el resumen contextual. `SUMMARY_SCOPE=all` habilita la IA para todas.
+**Síntesis con IA**: elegí un proveedor. Sin ninguna key configurada, las páginas de artículo usan un resumen contextual automático (costo cero) y quedan fuera del índice. Las síntesis se cachean 24 h. Una nota solo es indexable si está en español, fue archivada, aparece entre las 12 destacadas de portada o recibió clics en Google, y logró una síntesis larga de al menos 4 párrafos y 200 palabras. El sitemap aplica la misma compuerta. `SUMMARY_SCOPE=all` genera IA para todas con fines de diagnóstico, pero no amplía la indexación.
 
 - **Groq** (recomendado para empezar): `SUMMARY_PROVIDER=groq` + `GROQ_API_KEY`. Tier gratis con Llama, sin tarjeta; modelo por defecto `meta-llama/llama-4-scout-17b-16e-instruct` (~5× más presupuesto diario gratis que el 70B, cuyo límite de 100k tokens/día se quedaba corto).
 - **DeepSeek**: `SUMMARY_PROVIDER=deepseek` + `DEEPSEEK_API_KEY` (≈ US$1,10 por 1M tokens de salida).

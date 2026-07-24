@@ -10,8 +10,8 @@ import SmartImage from "@/components/SmartImage";
 import { categoryLabel } from "@/lib/categories";
 import { formatDateLong, timeAgo } from "@/lib/format";
 import { getDict, t } from "@/lib/i18n";
-import { isTopClicked } from "@/lib/gsc";
-import { findArticle, isFeaturedArticle, relatedArticles } from "@/lib/news";
+import { evaluateArticleIndexing } from "@/lib/indexing";
+import { findArticle, relatedArticles } from "@/lib/news";
 import { asLocale, localePath, SITE_NAME, SITE_URL } from "@/lib/site";
 import { getArticleBrief } from "@/lib/summary";
 import type { Locale } from "@/lib/types";
@@ -31,11 +31,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const dict = getDict(lang);
   const article = await findArticle(lang, id);
   if (!article) return { title: dict.meta.notFoundTitle, robots: { index: false } };
+  const { indexable } = await evaluateArticleIndexing(lang, article);
 
   const description = (article.description ?? t(dict.meta.categoryDesc, { category: categoryLabel(article.category, lang) })).slice(0, 160);
   return {
     title: article.title,
     description,
+    robots: { index: indexable, follow: true },
     alternates: { canonical: `/${lang}/a/${id}` },
     openGraph: {
       type: "article",
@@ -58,17 +60,14 @@ export default async function ArticlePage({ params }: Params) {
   if (!article) notFound();
 
   const adLabel = lang === "es" ? "Publicidad" : "Advertisement";
-  const related = await relatedArticles(lang, article, 6);
-  // Síntesis con IA solo para las notas con tracción: destacadas (portada y
-  // tarjetas de categoría, cubre lo nuevo al instante) o con clics reales en
-  // Google según Search Console (cubre la cola larga con tráfico; dato con
-  // ~1-2 días de retraso). El resto usa el resumen contextual.
-  // SUMMARY_SCOPE=all habilita la IA para todas.
-  const wantAI =
-    process.env.SUMMARY_SCOPE === "all" ||
-    (await isFeaturedArticle(lang, article)) ||
-    (await isTopClicked(article.id));
-  const brief = wantAI ? await getArticleBrief(article, lang) : null;
+  const [related, indexing] = await Promise.all([
+    relatedArticles(lang, article, 6),
+    evaluateArticleIndexing(lang, article),
+  ]);
+  // SUMMARY_SCOPE=all conserva el modo de diagnóstico, sin ampliar el sitemap.
+  const brief =
+    indexing.brief ??
+    (process.env.SUMMARY_SCOPE === "all" ? await getArticleBrief(article, lang) : null);
 
   // La og:image del artículo (alta resolución) es mejor que la miniatura del feed.
   const heroImage = brief?.image ?? article.image;

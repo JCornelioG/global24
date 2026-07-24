@@ -253,6 +253,13 @@ export interface ArticleBrief {
   image: string | null;
 }
 
+/** Solo los resúmenes largos, basados en el texto fuente, son indexables. */
+export function isSubstantialBrief(brief: ArticleBrief | null): brief is ArticleBrief {
+  if (!brief || brief.paragraphs.length < 4) return false;
+  const words = brief.paragraphs.join(" ").trim().split(/\s+/).filter(Boolean);
+  return words.length >= 200;
+}
+
 async function generateBrief(article: Article, lang: Locale): Promise<ArticleBrief> {
   const cfg = resolveProvider();
   if (!cfg) throw new Error("no provider");

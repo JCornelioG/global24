@@ -103,7 +103,7 @@ NewsletterBox({ lang }: { lang: Locale })          // client; email input + CTA 
 - `app/[lang]/page.tsx` (home, `export const revalidate = 600`): usa `getTopNews` + `getHomeSections`. Estructura: TrendingStrip → hero (1 NewsCard hero + 2 featured + HeadlineList "En breve" en columna derecha) → `<MundialPromo lang />` (módulo E) → SectionBlock por categoría alternando `grid`/`split` (internacional, política, negocios, tecnología grid; resto split de a pares en 2 columnas donde quede bien) → NewsletterBox. `generateMetadata` con canonical `/{lang}` + hreflang (`/es` ↔ `/en`).
 - `app/[lang]/c/[slug]/page.tsx` (`revalidate = 600`): `generateStaticParams` = LOCALES × CATEGORY_SLUGS; slug inválido → `notFound()`. H1 = label de categoría, nota `updatedNote`, grid de NewsCards con imagen + HeadlineList con el resto, JSON-LD `ItemList` de los artículos. Metadata: title = label, description = `t(dict.meta.categoryDesc, { category: label })`, canonical `/{lang}/c/{slug}` + hreflang.
 - `app/[lang]/not-found.tsx`: 404 bilingüe simple (usa dict vía params si es posible; si no, ES+EN juntos).
-- `app/sitemap.ts`: home, mundial y las 9 categorías × 2 idiomas con `alternates.languages`. `app/robots.ts`: allow all + sitemap. `app/manifest.ts`: nombre, colores (#0a0906 / #e8c15c), icons `/icon.svg`.
+- `app/sitemap.ts`: páginas estáticas bilingües con `alternates.languages` y una selección conservadora de hasta 12 artículos en español, solo si están archivados y tienen síntesis larga. Las demás páginas de artículo emiten `noindex, follow`. `app/robots.ts`: allow all + sitemap. `app/manifest.ts`: nombre, colores (#0a0906 / #e8c15c), icons `/icon.svg`.
 
 ### E · Mundial
 
